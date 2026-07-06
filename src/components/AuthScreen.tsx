@@ -44,10 +44,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, onContinueAsG
         return 'រកមិនឃើញគណនីប្រើប្រាស់អ៊ីមែលនេះទេ!';
       case 'auth/wrong-password':
         return 'លេខសម្ងាត់មិនត្រឹមត្រូវឡើយ!';
+      case 'auth/operation-not-supported-in-this-environment':
+      case 'auth/auth-domain-config-required':
+        return 'ការចូលគណនីតាម Google មិនត្រូវបានគាំទ្រនៅក្នុងផ្ទាំងមើលសាកល្បងនេះទេ។ សូមប្រើការចុះឈ្មោះគណនីថ្មីដោយប្រើអ៊ីមែលខាងក្រោម ឬចុចប៊ូតុងបន្តក្នុងនាមជាភ្ញៀវ!';
       default:
-        return 'មានបញ្ហាមួយបានកើតឡើង។ សូមព្យាយាមម្ដងទៀត!';
+        return 'មានបញ្ហាមួយបានកើតឡើង។ សូមព្យាយាមម្ដងទៀត ឬប្រើជម្រើសចុះឈ្មោះដោយប្រើអ៊ីមែលខាងក្រោម!';
     }
   };
+
+  const isIframe = window.self !== window.top;
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
@@ -98,12 +103,22 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, onContinueAsG
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF9F6] flex items-center justify-center p-4" id="auth-screen">
+    <div className="min-h-screen w-full bg-[#FAF9F6] flex flex-col items-center justify-center py-6 px-4 overflow-y-auto" id="auth-screen">
+      {isIframe && (
+        <div className="w-full max-w-md bg-amber-50 border border-amber-200/60 rounded-2xl p-4 mb-4 text-[11px] text-amber-800 font-semibold leading-relaxed flex gap-2.5 shadow-sm animate-fade-in">
+          <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+          <div>
+            <p className="font-bold mb-1">ដំណឹងពិសេសសម្រាប់ផ្ទាំងមើលសាកល្បង (Preview)</p>
+            ការចូលគណនី Google Popups អាចនឹងត្រូវបានរារាំងដោយសារច្បាប់សុវត្ថិភាពកម្មវិធីរុករក។ សូមប្រើប្រាស់ <span className="underline">អ៊ីមែល/លេខសម្ងាត់</span> ខាងក្រោម ឬចុច <span className="underline">បន្តក្នុងនាមជាភ្ញៀវ</span> ដើម្បីចូលលេងភ្លាមៗ!
+          </div>
+        </div>
+      )}
+
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
-        className="w-full max-w-md bg-white border border-gray-100 rounded-3xl shadow-xl shadow-gray-100/40 p-8 flex flex-col"
+        className="w-full max-w-md bg-white border border-gray-100 rounded-3xl shadow-xl shadow-gray-100/40 p-6 sm:p-8 flex flex-col my-auto"
       >
         {/* App Logo & Title */}
         <div className="flex flex-col items-center text-center mb-8">
