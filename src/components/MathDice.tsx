@@ -1,12 +1,56 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Dices, RotateCcw, Check, X, Flame, Award, Sparkles, HelpCircle, ArrowRight, ArrowLeft
+  Dices, RotateCcw, Check, X, Flame, Award, Sparkles, HelpCircle, ArrowRight, ArrowLeft,
+  Settings, Plus, Trash2
 } from 'lucide-react';
 
 interface MathDiceProps {
   onBackToMenu: () => void;
+  isAdmin?: boolean;
 }
+
+export interface DiceGameNamesMap {
+  [key: string]: string[];
+}
+
+const DEFAULT_DICE_GAMES_MAP: DiceGameNamesMap = {
+  "1-lucky": [
+    "ល្បែងបោះគ្រាប់ឡុកឡាក់សំណាង",
+    "ល្បែងទស្សន៍ទាយលេខសំណាង",
+    "ល្បែងវាស់កម្រិតសំណាងប្រចាំថ្ងៃ"
+  ],
+  "2-+": [
+    "ល្បែងបូកលេខសាមញ្ញ (២ គ្រាប់)",
+    "ល្បែងគិតរហ័សលំដាប់ងាយ (២ គ្រាប់)",
+    "ល្បែងបណ្តុះខួរក្បាលថ្នាក់ដំបូង (២ គ្រាប់)"
+  ],
+  "2--": [
+    "ល្បែងដកលេខរហ័ស (២ គ្រាប់)",
+    "ល្បែងគិតលេខដកសប្បាយៗ (២ គ្រាប់)",
+    "ល្បែងដកលេខប្រជែងល្បឿន (២ គ្រាប់)"
+  ],
+  "2-×": [
+    "ល្បែងគុណលេខរហ័ស (២ គ្រាប់)",
+    "ល្បែងមេគុណរំភើបចិត្ត (២ គ្រាប់)",
+    "ល្បែងគិតរហ័សថ្នាក់មេគុណ (២ គ្រាប់)"
+  ],
+  "3-+": [
+    "ល្បែងបូកលេខកម្រិតមធ្យម (៣ គ្រាប់)",
+    "ល្បែងបូក៣ខ្ទង់ល្បឿនលឿន (៣ គ្រាប់)",
+    "ល្បែងបូកលេខលំដាប់គិតខ្លាំង (៣ គ្រាប់)"
+  ],
+  "3--": [
+    "ល្បែងដកលេខកម្រិតខ្ពស់ (៣ គ្រាប់)",
+    "ល្បែងដក៣គ្រាប់សាកល្បងបញ្ញា (៣ គ្រាប់)",
+    "ល្បែងដកលេខស្មុគស្មាញ (៣ គ្រាប់)"
+  ],
+  "3-×": [
+    "ល្បែងគុណលេខកំពូលអ្នកគិត (៣ គ្រាប់)",
+    "ល្បែងមេគុណ៣គ្រាប់ពិបាកខ្លាំង (៣ គ្រាប់)",
+    "ល្បែងគុណលេខកម្រិតកំពូល (៣ គ្រាប់)"
+  ]
+};
 
 // Map standard digits to Khmer numerals for localization
 const KHMER_NUMBERS = ['០', '១', '២', '៣', '៤', '៥', '៦', '៧', '៨', '៩'];
@@ -41,10 +85,13 @@ interface DiceAnimConfig {
   shadowScale: number[];
   shadowOpacity: number[];
   shadowBlur: string[];
+  finalX?: number;
+  finalY?: number;
+  finalZ?: number;
 }
 
-export const MathDice: React.FC<MathDiceProps> = ({ onBackToMenu }) => {
-  const [diceCount, setDiceCount] = useState<2 | 3>(2);
+export const MathDice: React.FC<MathDiceProps> = ({ onBackToMenu, isAdmin }) => {
+  const [diceCount, setDiceCount] = useState<1 | 2 | 3>(2);
   const [diceValues, setDiceValues] = useState<number[]>([3, 5]);
   const [operator, setOperator] = useState<'+' | '-' | '×'>('+');
   const [isRolling, setIsRolling] = useState(false);
@@ -58,6 +105,158 @@ export const MathDice: React.FC<MathDiceProps> = ({ onBackToMenu }) => {
 
   const [diceAnimConfigs, setDiceAnimConfigs] = useState<DiceAnimConfig[]>([]);
   const [rollId, setRollId] = useState(0);
+
+  // States for 1-dice Lucky Game
+  const [luckyRollsCount, setLuckyRollsCount] = useState<number>(() => {
+    return parseInt(localStorage.getItem('lucky_rolls_count') || '0', 10);
+  });
+  const [luckyPoints, setLuckyPoints] = useState<number>(() => {
+    return parseInt(localStorage.getItem('lucky_points') || '0', 10);
+  });
+  const [luckyHistory, setLuckyHistory] = useState<number[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('lucky_history') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  // Custom Game Names and Settings
+  const [diceGameNamesMap, setDiceGameNamesMap] = useState<DiceGameNamesMap>(() => {
+    const local = localStorage.getItem('custom_dice_game_names');
+    if (local) {
+      try {
+        const parsed = JSON.parse(local);
+        if (!parsed["1-lucky"]) {
+          parsed["1-lucky"] = DEFAULT_DICE_GAMES_MAP["1-lucky"];
+        }
+        return parsed;
+      } catch {
+        return DEFAULT_DICE_GAMES_MAP;
+      }
+    }
+    return DEFAULT_DICE_GAMES_MAP;
+  });
+
+  const [selectedGameName, setSelectedGameName] = useState<string>('');
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [newGameNameInput, setNewGameNameInput] = useState('');
+  const [editingGameNameIndex, setEditingGameNameIndex] = useState<number | null>(null);
+  const [editingGameNameValue, setEditingGameNameValue] = useState('');
+
+  // Dual-way bindings: when diceCount or operator changes, update selected game name to first of the category if not already in it
+  useEffect(() => {
+    const key = diceCount === 1 ? '1-lucky' : `${diceCount}-${operator}`;
+    const names = diceGameNamesMap[key] || [];
+    if (names.length > 0) {
+      if (!names.includes(selectedGameName)) {
+        setSelectedGameName(names[0]);
+      }
+    } else {
+      setSelectedGameName('');
+    }
+  }, [diceCount, operator, diceGameNamesMap, selectedGameName]);
+
+  const handleSelectGameName = (fullNameWithKey: string) => {
+    const [key, name] = fullNameWithKey.split('||');
+    if (!key || !name) return;
+
+    if (key === '1-lucky') {
+      setDiceCount(1);
+      setSelectedGameName(name);
+    } else {
+      const [countStr, op] = key.split('-');
+      const count = parseInt(countStr, 10) as 1 | 2 | 3;
+      
+      setDiceCount(count);
+      setOperator(op as '+' | '-' | '×');
+      setSelectedGameName(name);
+    }
+  };
+
+  const handleAddGameName = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newGameNameInput.trim()) return;
+
+    const key = diceCount === 1 ? '1-lucky' : `${diceCount}-${operator}`;
+    const existing = diceGameNamesMap[key] || [];
+    
+    if (existing.includes(newGameNameInput.trim())) {
+      alert("ឈ្មោះល្បែងនេះមានរួចហើយនៅក្នុងប្រភេទនេះ!");
+      return;
+    }
+
+    const updatedMap = {
+      ...diceGameNamesMap,
+      [key]: [...existing, newGameNameInput.trim()]
+    };
+
+    setDiceGameNamesMap(updatedMap);
+    localStorage.setItem('custom_dice_game_names', JSON.stringify(updatedMap));
+    setSelectedGameName(newGameNameInput.trim());
+    setNewGameNameInput('');
+  };
+
+  const handleDeleteGameName = (indexToDelete: number) => {
+    const key = diceCount === 1 ? '1-lucky' : `${diceCount}-${operator}`;
+    const existing = diceGameNamesMap[key] || [];
+    
+    if (existing.length <= 1) {
+      alert("ប្រភេទល្បែងនីមួយៗត្រូវតែមានឈ្មោះល្បែងយ៉ាងហោចណាស់មួយ!");
+      return;
+    }
+
+    const updatedList = existing.filter((_, idx) => idx !== indexToDelete);
+    const updatedMap = {
+      ...diceGameNamesMap,
+      [key]: updatedList
+    };
+
+    setDiceGameNamesMap(updatedMap);
+    localStorage.setItem('custom_dice_game_names', JSON.stringify(updatedMap));
+    
+    if (selectedGameName === existing[indexToDelete]) {
+      setSelectedGameName(updatedList[0]);
+    }
+  };
+
+  const startEditing = (index: number, val: string) => {
+    setEditingGameNameIndex(index);
+    setEditingGameNameValue(val);
+  };
+
+  const handleSaveEdit = (index: number) => {
+    if (!editingGameNameValue.trim()) return;
+
+    const key = diceCount === 1 ? '1-lucky' : `${diceCount}-${operator}`;
+    const existing = diceGameNamesMap[key] || [];
+    const originalName = existing[index];
+
+    const updatedList = [...existing];
+    updatedList[index] = editingGameNameValue.trim();
+
+    const updatedMap = {
+      ...diceGameNamesMap,
+      [key]: updatedList
+    };
+
+    setDiceGameNamesMap(updatedMap);
+    localStorage.setItem('custom_dice_game_names', JSON.stringify(updatedMap));
+
+    if (selectedGameName === originalName) {
+      setSelectedGameName(editingGameNameValue.trim());
+    }
+
+    setEditingGameNameIndex(null);
+  };
+
+  const handleResetDiceGames = () => {
+    if (window.confirm("តើអ្នកពិតជាចង់កំណត់ឡើងវិញនូវឈ្មោះល្បែងទាំងអស់ទៅលំនាំដើមមែនទេ?")) {
+      setDiceGameNamesMap(DEFAULT_DICE_GAMES_MAP);
+      localStorage.setItem('custom_dice_game_names', JSON.stringify(DEFAULT_DICE_GAMES_MAP));
+      setEditingGameNameIndex(null);
+    }
+  };
 
 const getTargetAngles = (val: number) => {
   switch (val) {
@@ -76,7 +275,7 @@ const DICE_THEMES = [
     // Rose
     front: 'from-rose-500 to-rose-600 border-rose-400/40 text-white',
     back: 'from-rose-600 to-rose-700 border-rose-500/40 text-white',
-    right: 'from-rose-500 to-rose-600 border-rose-450/40 text-white',
+    right: 'from-rose-500 to-rose-600 border-rose-400/40 text-white',
     left: 'from-rose-600 to-rose-700 border-rose-500/40 text-white',
     top: 'from-rose-400 to-rose-500 border-rose-300/40 text-white',
     bottom: 'from-rose-700 to-rose-800 border-rose-600/40 text-white',
@@ -85,18 +284,18 @@ const DICE_THEMES = [
     // Amber
     front: 'from-amber-400 to-amber-500 border-amber-300/40 text-white',
     back: 'from-amber-500 to-amber-600 border-amber-400/40 text-white',
-    right: 'from-amber-400 to-amber-500 border-amber-350/40 text-white',
-    left: 'from-amber-550 to-amber-600 border-amber-450/40 text-white',
+    right: 'from-amber-400 to-amber-500 border-amber-300/40 text-white',
+    left: 'from-amber-500 to-amber-600 border-amber-400/40 text-white',
     top: 'from-amber-300 to-amber-400 border-amber-200/40 text-white',
     bottom: 'from-amber-600 to-amber-700 border-amber-500/40 text-white',
   },
   {
     // Indigo
     front: 'from-indigo-500 to-indigo-600 border-indigo-400/40 text-white',
-    back: 'from-indigo-600 to-indigo-700 border-indigo-550/40 text-white',
-    right: 'from-indigo-550 to-indigo-650 border-indigo-450/40 text-white',
-    left: 'from-indigo-600 to-indigo-700 border-indigo-550/40 text-white',
-    top: 'from-indigo-450 to-indigo-550 border-indigo-350/40 text-white',
+    back: 'from-indigo-600 to-indigo-700 border-indigo-500/40 text-white',
+    right: 'from-indigo-500 to-indigo-600 border-indigo-400/40 text-white',
+    left: 'from-indigo-600 to-indigo-700 border-indigo-500/40 text-white',
+    top: 'from-indigo-400 to-indigo-500 border-indigo-300/40 text-white',
     bottom: 'from-indigo-700 to-indigo-800 border-indigo-600/40 text-white',
   }
 ];
@@ -122,21 +321,24 @@ const DICE_THEMES = [
 
       const finalX = spinsX * 360 + targetAngles.x;
       const finalY = spinsY * 360 + targetAngles.y;
-      // Slight natural tilted angle at landing
-      const finalZOffset = (Math.random() - 0.5) * 16;
+      // Perfectly flat and straight landing with no tilt
+      const finalZOffset = 0;
       const finalZ = spinsZ * 360 + finalZOffset;
 
-      // 6 keyframes for precise squash-and-stretch physical settling
+      // 2 keyframes for perfectly linear, smooth, in-place rotation
       return {
-        rotateX: [0, finalX * 0.35, finalX * 0.7, finalX * 0.9, finalX * 1.02, finalX],
-        rotateY: [0, finalY * 0.35, finalY * 0.7, finalY * 0.9, finalY * 1.02, finalY],
-        rotateZ: [0, finalZ * 0.35, finalZ * 0.7, finalZ * 0.9, finalZ * 1.02, finalZ],
-        x: [0, targetX * 0.3, targetX * 0.65, targetX * 0.85, targetX * 0.98, targetX],
-        y: [0, bounceHeight, 20, -15, 5, 0],
-        scale: [1, 1.25, 0.75, 1.1, 0.95, 1], // Squash on impact (0.75), rebound stretch (1.1), rest
-        shadowScale: [1, 1.5, 0.6, 1.15, 0.9, 1], // Shadow is large/blurry when high, crisp/small on contact
-        shadowOpacity: [0.35, 0.08, 0.75, 0.22, 0.42, 0.35], // Shadow opacity matches distance from ground
-        shadowBlur: ["blur(4px)", "blur(12px)", "blur(1px)", "blur(6px)", "blur(3px)", "blur(4px)"]
+        rotateX: [0, finalX],
+        rotateY: [0, finalY],
+        rotateZ: [0, finalZ],
+        x: [0, 0],
+        y: [0, 0],
+        scale: [1, 1],
+        shadowScale: [1, 1],
+        shadowOpacity: [0.35, 0.35],
+        shadowBlur: ["blur(4px)", "blur(4px)"],
+        finalX,
+        finalY,
+        finalZ
       };
     });
   };
@@ -152,31 +354,42 @@ const DICE_THEMES = [
     setRollId(nextRollId);
     
     const finalValues = Array.from({ length: diceCount }, () => Math.floor(Math.random() * 6) + 1);
-    if (operator === '-') {
+    if (diceCount > 1 && operator === '-') {
       finalValues.sort((a, b) => b - a);
     }
 
     const nextConfigs = generateConfigs(diceCount, finalValues);
     setDiceAnimConfigs(nextConfigs);
+    setDiceValues(finalValues);
 
-    // Run the fast-ticking of values for ~6.0 seconds matching the physical motion duration in slow motion
-    let ticks = 0;
-    const maxTicks = 30;
-    const interval = setInterval(() => {
-      setDiceValues(Array.from({ length: diceCount }, () => Math.floor(Math.random() * 6) + 1));
-      ticks++;
-      if (ticks >= maxTicks) {
-        clearInterval(interval);
-        setDiceValues(finalValues);
-        setIsRolling(false);
+    const timer = setTimeout(() => {
+      setIsRolling(false);
+      // Record statistics if playing 1-dice lucky game
+      if (diceCount === 1) {
+        const rolledVal = finalValues[0];
+        setLuckyRollsCount(prev => {
+          const nv = prev + 1;
+          localStorage.setItem('lucky_rolls_count', String(nv));
+          return nv;
+        });
+        setLuckyPoints(prev => {
+          const nv = prev + rolledVal;
+          localStorage.setItem('lucky_points', String(nv));
+          return nv;
+        });
+        setLuckyHistory(prev => {
+          const nv = [rolledVal, ...prev].slice(0, 10);
+          localStorage.setItem('lucky_history', JSON.stringify(nv));
+          return nv;
+        });
       }
-    }, 200);
+    }, 6000);
   };
 
   // Initialize first game on load and handle config generation on configuration updates
   useEffect(() => {
     const finalValues = Array.from({ length: diceCount }, () => Math.floor(Math.random() * 6) + 1);
-    if (operator === '-') {
+    if (diceCount > 1 && operator === '-') {
       finalValues.sort((a, b) => b - a);
     }
 
@@ -191,21 +404,12 @@ const DICE_THEMES = [
     const nextRollId = Math.random();
     setRollId(nextRollId);
 
-    // Run fast-ticking for ~6.0 seconds matching the physical motion duration in slow motion
-    let ticks = 0;
-    const maxTicks = 30;
-    const interval = setInterval(() => {
-      setDiceValues(Array.from({ length: diceCount }, () => Math.floor(Math.random() * 6) + 1));
-      ticks++;
-      if (ticks >= maxTicks) {
-        clearInterval(interval);
-        setDiceValues(finalValues);
-        setIsRolling(false);
-      }
-    }, 200);
+    const timer = setTimeout(() => {
+      setIsRolling(false);
+    }, 6000);
 
     return () => {
-      clearInterval(interval);
+      clearTimeout(timer);
     };
   }, [diceCount, operator]);
 
@@ -273,11 +477,14 @@ const DICE_THEMES = [
       shadowBlur: ["blur(4px)", "blur(4px)"]
     };
 
+    const size = diceCount === 3 ? 76 : 96;
+    const halfSize = size / 2;
+
     // Style helper for faces
     const faceStyle = (transform: string) => ({
       position: 'absolute' as const,
-      width: '96px',
-      height: '96px',
+      width: `${size}px`,
+      height: `${size}px`,
       backfaceVisibility: 'hidden' as const,
       WebkitBackfaceVisibility: 'hidden' as const,
       transform,
@@ -295,34 +502,58 @@ const DICE_THEMES = [
       const activeDots = dotPositions[faceValue] || [];
       
       if (faceValue === 1) {
+        const dotWidth = size === 76 ? 24 : 36;
+        const glossWidth = size === 76 ? 8 : 10;
         return (
           <div className="w-full h-full flex items-center justify-center pointer-events-none">
             <motion.div 
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-red-500 to-red-700 rounded-full shadow-inner flex items-center justify-center border-2 border-red-300 relative"
-              style={{ boxShadow: 'inset 0 3px 5px rgba(0,0,0,0.5), 0 2px 4px rgba(255,255,255,0.2)' }}
+              className="bg-gradient-to-br from-red-500 to-red-700 rounded-full shadow-inner flex items-center justify-center border-2 border-red-300 relative"
+              style={{ 
+                width: `${dotWidth}px`, 
+                height: `${dotWidth}px`,
+                boxShadow: 'inset 0 3px 5px rgba(0,0,0,0.5), 0 2px 4px rgba(255,255,255,0.2)' 
+              }}
             >
               {/* 3D glossy highlight inside the red dot */}
-              <div className="absolute top-1 left-1.5 w-2.5 h-2.5 bg-white/55 rounded-full pointer-events-none" />
+              <div 
+                className="absolute top-1 left-1 bg-white/55 rounded-full pointer-events-none" 
+                style={{ width: `${glossWidth}px`, height: `${glossWidth}px` }}
+              />
             </motion.div>
           </div>
         );
       }
       
+      const paddingVal = size === 76 ? 11 : 16;
+      const dotWidth = size === 76 ? 11 : 15;
+      const glossWidth = size === 76 ? 3 : 4;
+      const gapVal = size === 76 ? "gap-0.5" : "gap-1";
+
       return (
-        <div className="grid grid-cols-3 grid-rows-3 gap-1 w-full h-full pointer-events-none p-4">
+        <div 
+          className={`grid grid-cols-3 grid-rows-3 ${gapVal} w-full h-full pointer-events-none`}
+          style={{ padding: `${paddingVal}px` }}
+        >
           {Array.from({ length: 9 }).map((_, i) => (
             <div key={i} className="flex items-center justify-center">
               {activeDots.includes(i) && (
                 <motion.div 
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="w-3.5 h-3.5 sm:w-4 sm:h-4 bg-white rounded-full relative shadow-md"
-                  style={{ boxShadow: 'inset 0 2px 3px rgba(0,0,0,0.35), 0 1px 1px rgba(255,255,255,0.3)' }}
+                  className="bg-white rounded-full relative shadow-md"
+                  style={{ 
+                    width: `${dotWidth}px`, 
+                    height: `${dotWidth}px`,
+                    boxShadow: 'inset 0 2px 3px rgba(0,0,0,0.35), 0 1px 1px rgba(255,255,255,0.3)' 
+                  }}
                 >
                   {/* Gloss detail on white dots */}
-                  <div className="absolute top-0.5 left-0.5 w-1 h-1 bg-white/80 rounded-full pointer-events-none" />
+                  <div 
+                    className="absolute top-0.5 left-0.5 bg-white/80 rounded-full pointer-events-none" 
+                    style={{ width: `${glossWidth}px`, height: `${glossWidth}px` }}
+                  />
                 </motion.div>
               )}
             </div>
@@ -332,60 +563,68 @@ const DICE_THEMES = [
     };
 
     return (
-      <div className="relative flex flex-col items-center select-none" style={{ width: '96px', height: '110px' }}>
+      <div className="relative flex flex-col items-center select-none" style={{ width: `${size}px`, height: `${size + 14}px` }}>
         {/* Realistic shadow under the dice with reverse-scaling & blur effects */}
         <motion.div
           key={`shadow-${rollId}-${index}`}
-          animate={isRolling ? {
-            scale: config.shadowScale,
-            opacity: config.shadowOpacity,
-            filter: config.shadowBlur,
-            x: config.x
-          } : {
-            scale: [1, 1.05, 1],
-            opacity: [0.35, 0.28, 0.35],
-            transition: { repeat: Infinity, duration: 2 + index, ease: "easeInOut" }
+          initial={{
+            scale: 1,
+            opacity: 0.35,
+            x: 0
+          }}
+          animate={{
+            scale: isRolling ? 1 : [1, 1.05, 1],
+            opacity: isRolling ? 0.35 : [0.35, 0.28, 0.35],
+            x: 0
           }}
           transition={isRolling ? {
             duration: 6.0,
-            ease: ["easeOut", "easeIn", "easeOut", "easeIn", "easeOut"],
-            times: [0, 0.35, 0.65, 0.82, 0.92, 1.0]
-          } : {}}
-          className="w-16 h-3 bg-black/40 rounded-full absolute bottom-0 left-1/2 -translate-x-1/2 pointer-events-none"
+            ease: "linear"
+          } : {
+            scale: { repeat: Infinity, duration: 2 + index, ease: "easeInOut" },
+            opacity: { repeat: Infinity, duration: 2 + index, ease: "easeInOut" }
+          }}
+          className="bg-black/40 rounded-full absolute bottom-0 left-1/2 -translate-x-1/2 pointer-events-none"
+          style={{ width: `${size * 2/3}px`, height: '10px' }}
         />
 
         {/* 3D Cube Container */}
         <div 
-          className="w-24 h-24 relative" 
-          style={{ perspective: '1000px' }}
+          className="relative" 
+          style={{ width: `${size}px`, height: `${size}px`, perspective: '1000px' }}
         >
           {/* 3D Rolling Dice Body */}
           <motion.div
             key={`dice-${rollId}-${index}`}
-            animate={isRolling ? {
-              rotateX: config.rotateX,
-              rotateY: config.rotateY,
-              rotateZ: config.rotateZ,
-              x: config.x,
-              y: config.y,
-              scale: config.scale
-            } : {
-              rotateX: getTargetAngles(value).x,
-              rotateY: getTargetAngles(value).y,
+            initial={{
+              rotateX: 0,
+              rotateY: 0,
               rotateZ: 0,
-              y: [0, -3, 0],
-              transition: { 
-                y: { repeat: Infinity, duration: 2 + index, ease: "easeInOut" },
-                rotateX: { duration: 0.3 },
-                rotateY: { duration: 0.3 },
-                rotateZ: { duration: 0.3 }
-              }
+              x: 0,
+              y: 0,
+              scale: 1
+            }}
+            animate={{
+              rotateX: config.finalX ?? getTargetAngles(value).x,
+              rotateY: config.finalY ?? getTargetAngles(value).y,
+              rotateZ: config.finalZ ?? 0,
+              x: 0,
+              y: isRolling ? 0 : [0, -3, 0],
+              scale: 1
             }}
             transition={isRolling ? {
-              duration: 6.0,
-              ease: ["easeOut", "easeIn", "easeOut", "easeIn", "easeOut"],
-              times: [0, 0.35, 0.65, 0.82, 0.92, 1.0]
-            } : {}}
+              rotateX: { duration: 6.0, ease: "linear" },
+              rotateY: { duration: 6.0, ease: "linear" },
+              rotateZ: { duration: 6.0, ease: "linear" },
+              x: { duration: 6.0 },
+              y: { duration: 6.0 },
+              scale: { duration: 6.0 }
+            } : {
+              rotateX: { duration: 0 },
+              rotateY: { duration: 0 },
+              rotateZ: { duration: 0 },
+              y: { repeat: Infinity, duration: 2 + index, ease: "easeInOut" }
+            }}
             className="w-full h-full relative cursor-pointer"
             style={{ 
               transformStyle: 'preserve-3d',
@@ -394,7 +633,7 @@ const DICE_THEMES = [
           >
             {/* Face 1: Front (Value 1) */}
             <div 
-              style={faceStyle('rotateY(0deg) translateZ(48px)')}
+              style={faceStyle(`rotateY(0deg) translateZ(${halfSize}px)`)}
               className={`bg-gradient-to-br ${theme.front} rounded-2xl border-2 border-white/30 flex items-center justify-center`}
             >
               <div className="absolute inset-0.5 rounded-xl border border-white/10 pointer-events-none" />
@@ -403,7 +642,7 @@ const DICE_THEMES = [
 
             {/* Face 2: Top (Value 2) */}
             <div 
-              style={faceStyle('rotateX(90deg) translateZ(48px)')}
+              style={faceStyle(`rotateX(90deg) translateZ(${halfSize}px)`)}
               className={`bg-gradient-to-br ${theme.top} rounded-2xl border-2 border-white/30 flex items-center justify-center`}
             >
               <div className="absolute inset-0.5 rounded-xl border border-white/10 pointer-events-none" />
@@ -412,7 +651,7 @@ const DICE_THEMES = [
 
             {/* Face 3: Right (Value 3) */}
             <div 
-              style={faceStyle('rotateY(90deg) translateZ(48px)')}
+              style={faceStyle(`rotateY(90deg) translateZ(${halfSize}px)`)}
               className={`bg-gradient-to-br ${theme.right} rounded-2xl border-2 border-white/30 flex items-center justify-center`}
             >
               <div className="absolute inset-0.5 rounded-xl border border-white/10 pointer-events-none" />
@@ -421,7 +660,7 @@ const DICE_THEMES = [
 
             {/* Face 4: Left (Value 4) */}
             <div 
-              style={faceStyle('rotateY(-90deg) translateZ(48px)')}
+              style={faceStyle(`rotateY(-90deg) translateZ(${halfSize}px)`)}
               className={`bg-gradient-to-br ${theme.left} rounded-2xl border-2 border-white/30 flex items-center justify-center`}
             >
               <div className="absolute inset-0.5 rounded-xl border border-white/10 pointer-events-none" />
@@ -430,7 +669,7 @@ const DICE_THEMES = [
 
             {/* Face 5: Bottom (Value 5) */}
             <div 
-              style={faceStyle('rotateX(-90deg) translateZ(48px)')}
+              style={faceStyle(`rotateX(-90deg) translateZ(${halfSize}px)`)}
               className={`bg-gradient-to-br ${theme.bottom} rounded-2xl border-2 border-white/30 flex items-center justify-center`}
             >
               <div className="absolute inset-0.5 rounded-xl border border-white/10 pointer-events-none" />
@@ -439,7 +678,7 @@ const DICE_THEMES = [
 
             {/* Face 6: Back (Value 6) */}
             <div 
-              style={faceStyle('rotateY(180deg) translateZ(48px)')}
+              style={faceStyle(`rotateY(180deg) translateZ(${halfSize}px)`)}
               className={`bg-gradient-to-br ${theme.back} rounded-2xl border-2 border-white/30 flex items-center justify-center`}
             >
               <div className="absolute inset-0.5 rounded-xl border border-white/10 pointer-events-none" />
@@ -456,72 +695,247 @@ const DICE_THEMES = [
       {/* Controls & Options Panel (Left Side - 4 Cols) */}
       <div className="lg:col-span-4 border-r border-gray-100 pr-0 lg:pr-6 flex flex-col justify-between">
         <div className="space-y-6">
+          {/* Game Selection Dropdown & Admin Entry */}
+          <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 space-y-4">
+            <div className="relative">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-2 text-left">
+                ជ្រើសរើសឈ្មោះល្បែង (Dropdown)
+              </label>
+              <div className="flex gap-2">
+                <select
+                  value={diceCount === 1 ? `1-lucky||${selectedGameName}` : `${diceCount}-${operator}||${selectedGameName}`}
+                  onChange={(e) => handleSelectGameName(e.target.value)}
+                  className="flex-1 py-2.5 px-3 text-xs font-bold rounded-2xl border border-gray-200 bg-white text-gray-700 outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-100 transition-all cursor-pointer"
+                >
+                  {["1-lucky", "2-+", "2--", "2-×", "3-+", "3--", "3-×"].map((key) => {
+                    const names = diceGameNamesMap[key] || [];
+                    const labels: { [k: string]: string } = {
+                      "1-lucky": "១ គ្រាប់ (ល្បែងសំណាង)",
+                      "2-+": "២ គ្រាប់ (បូក)",
+                      "2--": "២ គ្រាប់ (ដក)",
+                      "2-×": "២ គ្រាប់ (គុណ)",
+                      "3-+": "៣ គ្រាប់ (បូក)",
+                      "3--": "៣ គ្រាប់ (ដក)",
+                      "3-×": "៣ គ្រាប់ (គុណ)",
+                    };
+                    
+                    if (names.length === 0) return null;
+                    
+                    return (
+                      <optgroup key={key} label={labels[key]} className="font-sans text-xs">
+                        {names.map((name, idx) => (
+                          <option key={idx} value={`${key}||${name}`} className="font-sans py-1">
+                            {name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    );
+                  })}
+                </select>
+                
+                {isAdmin && (
+                  <button
+                    onClick={() => setShowAdminPanel(!showAdminPanel)}
+                    className={`p-2.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-center shrink-0 ${
+                      showAdminPanel
+                        ? 'bg-rose-50 border-rose-200 text-rose-600 shadow-sm'
+                        : 'bg-white border-gray-200 text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+                    }`}
+                    title="កំណត់ឈ្មោះល្បែង (Admin)"
+                    type="button"
+                  >
+                    <Settings className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Admin Management Interface (collapsible) */}
+            <AnimatePresence>
+              {showAdminPanel && isAdmin && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="pt-2 border-t border-slate-200 space-y-3 overflow-hidden text-left"
+                >
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
+                      កំណត់ឈ្មោះល្បែង (ប្រភេទ៖ {diceCount === 1 ? '១គ្រាប់ (សំណាង)' : `${diceCount}គ្រាប់ (${operator === '+' ? 'បូក' : operator === '-' ? 'ដក' : 'គុណ'})`})
+                    </h4>
+                    <button
+                      onClick={handleResetDiceGames}
+                      className="text-[10px] text-rose-500 hover:text-rose-700 font-bold flex items-center gap-0.5"
+                      type="button"
+                    >
+                      <RotateCcw className="w-2.5 h-2.5" /> លំនាំដើម
+                    </button>
+                  </div>
+
+                  {/* List of names for active type */}
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                    {(diceGameNamesMap[diceCount === 1 ? '1-lucky' : `${diceCount}-${operator}`] || []).map((name, idx) => (
+                      <div key={idx} className="flex items-center justify-between gap-1.5 p-2 bg-white rounded-xl border border-slate-100 text-[11px]">
+                        {editingGameNameIndex === idx ? (
+                          <div className="flex-1 flex gap-1">
+                            <input
+                              type="text"
+                              value={editingGameNameValue}
+                              onChange={(e) => setEditingGameNameValue(e.target.value)}
+                              className="flex-1 px-2 py-1 border border-rose-300 rounded-lg outline-none text-[11px]"
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => handleSaveEdit(idx)}
+                              className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg"
+                              type="button"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setEditingGameNameIndex(null)}
+                              className="p-1 text-gray-400 hover:bg-gray-50 rounded-lg"
+                              type="button"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <span className={`font-bold truncate max-w-[150px] ${selectedGameName === name ? 'text-rose-600' : 'text-gray-700'}`}>
+                              {name}
+                            </span>
+                            <div className="flex items-center gap-0.5 shrink-0">
+                              <button
+                                onClick={() => startEditing(idx, name)}
+                                className="px-1.5 py-0.5 text-[10px] text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md border border-slate-100"
+                                type="button"
+                              >
+                                កែ
+                              </button>
+                              <button
+                                onClick={() => handleDeleteGameName(idx)}
+                                className="p-1 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
+                                type="button"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Add new name form */}
+                  <div className="flex gap-1.5 pt-1">
+                    <input
+                      type="text"
+                      placeholder="បន្ថែមឈ្មោះល្បែងថ្មី..."
+                      value={newGameNameInput}
+                      onChange={(e) => setNewGameNameInput(e.target.value)}
+                      className="flex-1 px-2.5 py-1.5 border border-slate-200 focus:border-rose-400 rounded-xl outline-none text-[11px] bg-white"
+                    />
+                    <button
+                      onClick={handleAddGameName}
+                      disabled={!newGameNameInput.trim()}
+                      className="px-3 py-1.5 bg-rose-500 hover:bg-rose-600 disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-xl text-[10px] font-black transition-colors flex items-center gap-0.5 cursor-pointer shrink-0"
+                      type="button"
+                    >
+                      <Plus className="w-3 h-3" /> បន្ថែម
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
           {/* Dice Count Selection */}
           <div>
             <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-2">
               ចំនួនគ្រាប់ឡុកឡាក់
             </label>
-            <div className="grid grid-cols-2 gap-3">
-              {[2, 3].map((num) => (
+            <div className="grid grid-cols-3 gap-2">
+              {[1, 2, 3].map((num) => (
                 <button
                   key={num}
-                  onClick={() => setDiceCount(num as 2 | 3)}
-                  className={`py-2 px-3 text-xs font-bold rounded-2xl border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  onClick={() => setDiceCount(num as 1 | 2 | 3)}
+                  className={`py-2 px-1 text-xs font-bold rounded-2xl border transition-all cursor-pointer flex items-center justify-center gap-1 ${
                     diceCount === num
                       ? 'bg-rose-50 border-rose-200 text-rose-600 font-extrabold shadow-sm'
                       : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                   }`}
                 >
-                  <Dices className="w-4 h-4" />
+                  <Dices className="w-3.5 h-3.5" />
                   {num} គ្រាប់ ({toKhmerNum(num)})
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Operator Selection */}
-          <div>
-            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-2">
-              ជ្រើសរើសប្រមាណវិធី
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {([
-                { symbol: '+', label: 'បូក' },
-                { symbol: '-', label: 'ដក' },
-                { symbol: '×', label: 'គុណ' }
-              ] as const).map(({ symbol, label }) => (
-                <button
-                  key={symbol}
-                  onClick={() => setOperator(symbol)}
-                  className={`py-2.5 px-1 text-xs font-bold rounded-2xl border transition-all cursor-pointer flex flex-col items-center gap-1 ${
-                    operator === symbol
-                      ? 'bg-rose-50 border-rose-200 text-rose-600 font-extrabold shadow-sm'
-                      : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  <span className="text-lg font-black">{symbol}</span>
-                  <span className="text-[10px] text-gray-400 font-medium">{label}</span>
-                </button>
-              ))}
+          {/* Operator Selection - Hidden for 1-dice */}
+          {diceCount > 1 && (
+            <div>
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-2">
+                ជ្រើសរើសប្រមាណវិធី
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { symbol: '+', label: 'បូក' },
+                  { symbol: '-', label: 'ដក' },
+                  { symbol: '×', label: 'គុណ' }
+                ] as const).map(({ symbol, label }) => (
+                  <button
+                    key={symbol}
+                    onClick={() => setOperator(symbol)}
+                    className={`py-2.5 px-1 text-xs font-bold rounded-2xl border transition-all cursor-pointer flex flex-col items-center gap-1 ${
+                      operator === symbol
+                        ? 'bg-rose-50 border-rose-200 text-rose-600 font-extrabold shadow-sm'
+                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className="text-lg font-black">{symbol}</span>
+                    <span className="text-[10px] text-gray-400 font-medium">{label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Info Card */}
-          <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-2xl text-xs text-amber-800 space-y-2">
-            <h4 className="font-extrabold flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              របៀបលេង៖
-            </h4>
-            <p className="leading-relaxed">
-              ១. ជ្រើសរើសប្រមាណវិធី និងចំនួនគ្រាប់ឡុកឡាក់ខាងលើ។
-            </p>
-            <p className="leading-relaxed">
-              ២. ចុចបោះគ្រាប់ឡុកឡាក់ ឬចុចលើគ្រាប់ឡុកឡាក់ដើម្បីបោះសារជាថ្មី។
-            </p>
-            <p className="leading-relaxed">
-              ៣. គណនាផលបូក ផលដក ឬផលគុណនៃគ្រាប់ឡុកឡាក់ដែលបានបង្ហាញ រួចបំពេញចម្លើយរបស់អ្នក។ (ចំពោះផលដក គឺយកលេខធំដកលេខតូចជាលំដាប់)។
-            </p>
-          </div>
+          {diceCount === 1 ? (
+            <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-2xl text-xs text-amber-800 space-y-2">
+              <h4 className="font-extrabold flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                ល្បែងឡុកឡាក់ផ្សងសំណាង៖
+              </h4>
+              <p className="leading-relaxed">
+                ១. ចុចបោះគ្រាប់ឡុកឡាក់ដើម្បីចាប់ផ្ដើមបង្វិលសំណាងរបស់អ្នក។
+              </p>
+              <p className="leading-relaxed">
+                ២. រង់ចាំគ្រាប់ឈប់វិល ដើម្បីទទួលបានសារទស្សន៍ទាយសំណាងប្លែកៗគ្នាទាំង ៦ កម្រិត។
+              </p>
+              <p className="leading-relaxed">
+                ៣. ពិន្ទុសំណាងសរុប គឺគណនាដោយបូកបញ្ចូលរាល់លទ្ធផលដែលអ្នកបោះបាន!
+              </p>
+            </div>
+          ) : (
+            <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-2xl text-xs text-amber-800 space-y-2">
+              <h4 className="font-extrabold flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                របៀបលេង៖
+              </h4>
+              <p className="leading-relaxed">
+                ១. ជ្រើសរើសប្រមាណវិធី និងចំនួនគ្រាប់ឡុកឡាក់ខាងលើ។
+              </p>
+              <p className="leading-relaxed">
+                ២. ចុចបោះគ្រាប់ឡុកឡាក់ ឬចុចលើគ្រាប់ឡុកឡាក់ដើម្បីបោះសារជាថ្មី។
+              </p>
+              <p className="leading-relaxed">
+                ៣. គណនាផលបូក ផលដក ឬផលគុណនៃគ្រាប់ឡុកឡាក់ដែលបានបង្ហាញ រួចបំពេញចម្លើយរបស់អ្នក។ (ចំពោះផលដក គឺយកលេខធំដកលេខតូចជាលំដាប់)។
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Action button to roll */}
@@ -539,93 +953,184 @@ const DICE_THEMES = [
 
       {/* Main Interactive Stage (Right Side - 8 Cols) */}
       <div className="lg:col-span-8 flex flex-col justify-between min-h-[400px]">
+        {/* Active Game Title Display */}
+        {selectedGameName && (
+          <div className="flex items-center gap-2 mb-4 bg-gradient-to-r from-rose-50 to-rose-100/30 border border-rose-100 p-3 px-4 rounded-2xl">
+            <Sparkles className="w-4 h-4 text-rose-500 animate-pulse shrink-0" />
+            <div className="text-left">
+              <span className="text-[9px] font-bold text-rose-400 uppercase tracking-wider block leading-none mb-0.5">កំពុងលេងល្បែង</span>
+              <h2 className="text-xs sm:text-sm font-black text-rose-700 leading-tight">
+                {selectedGameName}
+              </h2>
+            </div>
+          </div>
+        )}
+
         {/* Statistics Bar */}
-        <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-100 rounded-2xl mb-6">
-          <div className="flex items-center gap-4">
-            <div className="text-center">
-              <span className="text-[10px] font-bold text-gray-400 block uppercase">ពិន្ទុ</span>
-              <span className="text-lg font-black text-rose-500">{score}/{totalAttempted}</span>
-            </div>
-            <div className="h-8 w-px bg-gray-200" />
-            <div className="flex items-center gap-1.5">
-              <div className="p-1.5 bg-orange-50 text-orange-500 rounded-xl">
-                <Flame className="w-4 h-4 fill-current" />
+        {diceCount > 1 && (
+          <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-100 rounded-2xl mb-6">
+            <div className="flex items-center gap-4">
+              <div className="text-center">
+                <span className="text-[10px] font-bold text-gray-400 block uppercase">ពិន្ទុ</span>
+                <span className="text-lg font-black text-rose-500">{score}/{totalAttempted}</span>
               </div>
-              <div>
-                <span className="text-[10px] font-bold text-gray-400 block uppercase">Streak</span>
-                <span className="text-sm font-black text-orange-600">{streak}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <Award className="w-4 h-4 text-yellow-500" />
-            <span className="text-xs text-gray-500">កម្រិត Streak ខ្ពស់បំផុត៖ <strong className="text-gray-800">{highStreak}</strong></span>
-          </div>
-        </div>
-
-        {/* Dice Showcase Stage */}
-        <div className="flex-1 flex flex-col items-center justify-center py-6">
-          {/* Animated Dice Tray */}
-          <div className="bg-gradient-to-b from-gray-50 to-white border-2 border-dashed border-gray-200 rounded-3xl p-8 sm:p-12 w-full max-w-lg shadow-inner flex flex-wrap items-center justify-center gap-6 sm:gap-10 relative overflow-hidden">
-            {/* Soft decorative background circles */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-rose-50 rounded-full blur-3xl opacity-40 pointer-events-none" />
-            
-            {diceValues.map((val, idx) => (
-              <React.Fragment key={idx}>
-                {idx > 0 && (
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="text-2xl font-black text-gray-300 pointer-events-none select-none"
-                  >
-                    {operator}
-                  </motion.div>
-                )}
-                <DiceFace value={val} index={idx} />
-              </React.Fragment>
-            ))}
-          </div>
-
-          {/* Equation and Input Form */}
-          <div className="w-full max-w-md mt-8">
-            <form onSubmit={handleCheck} className="space-y-4">
-              <div className="text-center mb-2">
-                <span className="text-xs text-gray-400 font-bold tracking-wider block uppercase mb-1">សមីការគណនា</span>
-                <h3 className="text-2xl font-black text-gray-700 tracking-wide font-sans flex items-center justify-center gap-2">
-                  <span>{diceValues.map(v => v).join(` ${operator} `)}</span>
-                  <span className="text-gray-300">=</span>
-                  <span className="text-rose-500">?</span>
-                </h3>
-                <div className="text-xs text-gray-400 mt-1">
-                  (អក្សរខ្មែរ៖ {diceValues.map(v => toKhmerNum(v)).join(` ${operator} `)} = ?)
+              <div className="h-8 w-px bg-gray-200" />
+              <div className="flex items-center gap-1.5">
+                <div className="p-1.5 bg-orange-50 text-orange-500 rounded-xl">
+                  <Flame className="w-4 h-4 fill-current" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-gray-400 block uppercase">Streak</span>
+                  <span className="text-sm font-black text-orange-600">{streak}</span>
                 </div>
               </div>
+            </div>
 
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={userAnswer}
-                  onChange={(e) => setUserAnswer(e.target.value)}
-                  disabled={isRolling || hasChecked}
-                  placeholder="បញ្ចូលចម្លើយនៅទីនេះ..."
-                  className="flex-1 py-3 px-4 text-center text-lg font-black bg-white border-2 border-gray-200 focus:border-rose-500 rounded-2xl shadow-inner outline-none transition-all placeholder:font-normal placeholder:text-sm placeholder:text-gray-300"
-                />
-                <button
-                  type="submit"
-                  disabled={isRolling || hasChecked || !userAnswer.trim()}
-                  className="px-6 bg-slate-800 hover:bg-slate-900 text-white disabled:bg-gray-200 disabled:text-gray-400 font-bold rounded-2xl shadow-md transition-all cursor-pointer flex items-center justify-center"
-                >
-                  <Check className="w-5 h-5" />
-                </button>
-              </div>
-            </form>
+            <div className="flex items-center gap-1.5">
+              <Award className="w-4 h-4 text-yellow-500" />
+              <span className="text-xs text-gray-500">កម្រិត Streak ខ្ពស់បំផុត៖ <strong className="text-gray-800">{highStreak}</strong></span>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Dice Showcase Stage */}
+        {diceCount === 1 ? (
+          <div className="flex-1 flex flex-col items-center justify-center py-6">
+            {/* Animated Dice Tray */}
+            <div className="bg-gradient-to-b from-gray-50 to-white border-2 border-dashed border-gray-200 rounded-3xl p-4 sm:p-8 w-full max-w-lg shadow-inner flex flex-nowrap items-center justify-center gap-3 sm:gap-6 relative overflow-hidden">
+              {/* Soft decorative background circles */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-violet-50 rounded-full blur-3xl opacity-40 pointer-events-none" />
+              
+              <DiceFace value={diceValues[0] || 1} index={0} />
+            </div>
+
+            {/* Dice Result details */}
+            <div className="w-full max-w-md mt-6">
+              <AnimatePresence mode="wait">
+                {isRolling ? (
+                  <motion.div
+                    key="rolling-state"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="p-5 bg-slate-50 border border-slate-100 rounded-2xl text-center space-y-2.5 shadow-sm"
+                  >
+                    <p className="text-xs font-bold text-slate-400 tracking-wider uppercase animate-pulse">កំពុងបោះគ្រាប់ឡុកឡាក់...</p>
+                    <div className="flex justify-center items-center gap-2">
+                      <span className="text-3xl animate-bounce">🎲</span>
+                    </div>
+                    <p className="text-xs text-slate-500 font-medium">តើអ្នកនឹងទទួលបានលេខអ្វី? សូមរង់ចាំមួយភ្លែត!</p>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="result-state"
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-5 rounded-2xl border border-violet-100 bg-violet-50/30 text-center shadow-xs space-y-1"
+                  >
+                    <span className="text-[10px] font-extrabold text-violet-500 uppercase tracking-wider block">លទ្ធផលបោះបាន</span>
+                    <h3 className="text-3xl font-black text-violet-700">
+                      លេខ {toKhmerNum(diceValues[0] || 1)}
+                    </h3>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Recent rolls history */}
+              {luckyHistory.length > 0 && (
+                <div className="mt-6 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-gray-400 block text-left uppercase tracking-wider">ប្រវត្តិនៃការបោះចុងក្រោយ (១០ ដង)៖</span>
+                    <button
+                      onClick={() => {
+                        if (window.confirm("តើអ្នកចង់លុបប្រវត្តិនៃការបោះមែនទេ?")) {
+                          setLuckyHistory([]);
+                          localStorage.removeItem('lucky_history');
+                        }
+                      }}
+                      className="text-[10px] text-gray-400 hover:text-rose-500 font-bold transition-colors cursor-pointer"
+                      type="button"
+                    >
+                      លុបប្រវត្តិ
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 justify-start">
+                    {luckyHistory.map((val, idx) => (
+                      <div
+                        key={idx}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shadow-xs border bg-white border-slate-200 text-slate-700"
+                      >
+                        {toKhmerNum(val)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center py-6">
+            {/* Animated Dice Tray */}
+            <div className="bg-gradient-to-b from-gray-50 to-white border-2 border-dashed border-gray-200 rounded-3xl p-4 sm:p-8 w-full max-w-lg shadow-inner flex flex-nowrap items-center justify-center gap-3 sm:gap-6 relative overflow-hidden">
+              {/* Soft decorative background circles */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-rose-50 rounded-full blur-3xl opacity-40 pointer-events-none" />
+              
+              {diceValues.map((val, idx) => (
+                <React.Fragment key={idx}>
+                  {idx > 0 && (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="text-2xl font-black text-gray-300 pointer-events-none select-none"
+                    >
+                      {operator}
+                    </motion.div>
+                  )}
+                  <DiceFace value={val} index={idx} />
+                </React.Fragment>
+              ))}
+            </div>
+
+            {/* Equation and Input Form */}
+            <div className="w-full max-w-md mt-8">
+              <form onSubmit={handleCheck} className="space-y-4">
+                <div className="text-center mb-2">
+                  <span className="text-xs text-gray-400 font-bold tracking-wider block uppercase mb-1">សមីការគណនា</span>
+                  <h3 className="text-2xl font-black text-gray-700 tracking-wide font-sans flex items-center justify-center gap-2">
+                    <span>{isRolling ? Array.from({ length: diceCount }).map(() => "🎲").join(` ${operator} `) : diceValues.map(v => v).join(` ${operator} `)}</span>
+                    <span className="text-gray-300">=</span>
+                    <span className="text-rose-500">?</span>
+                  </h3>
+                  <div className="text-xs text-gray-400 mt-1">
+                    (អក្សរខ្មែរ៖ {isRolling ? Array.from({ length: diceCount }).map(() => "🎲").join(` ${operator} `) : diceValues.map(v => toKhmerNum(v)).join(` ${operator} `)} = ?)
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={userAnswer}
+                    onChange={(e) => setUserAnswer(e.target.value)}
+                    disabled={isRolling || hasChecked}
+                    placeholder="បញ្ចូលចម្លើយនៅទីនេះ..."
+                    className="flex-1 py-3 px-4 text-center text-lg font-black bg-white border-2 border-gray-200 focus:border-rose-500 rounded-2xl shadow-inner outline-none transition-all placeholder:font-normal placeholder:text-sm placeholder:text-gray-300"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isRolling || hasChecked || !userAnswer.trim()}
+                    className="px-6 bg-slate-800 hover:bg-slate-900 text-white disabled:bg-gray-200 disabled:text-gray-400 font-bold rounded-2xl shadow-md transition-all cursor-pointer flex items-center justify-center"
+                  >
+                    <Check className="w-5 h-5" />
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* Feedback Display */}
         <AnimatePresence mode="wait">
-          {feedback && (
+          {diceCount > 1 && feedback && (
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
@@ -660,15 +1165,25 @@ const DICE_THEMES = [
             <ArrowLeft className="w-4 h-4" /> ត្រឡប់ទៅបញ្ជីវិញ
           </button>
 
-          {hasChecked && (
-            <motion.button
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
+          {diceCount === 1 ? (
+            <button
               onClick={rollDice}
-              className="py-2.5 px-5 bg-rose-500 hover:bg-rose-600 text-white text-xs font-black rounded-xl shadow-md shadow-rose-500/10 hover:shadow-lg transition-all cursor-pointer flex items-center gap-1.5"
+              disabled={isRolling}
+              className="py-2.5 px-5 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-300 text-white text-xs font-black rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5"
             >
-              បន្តទៅសំណួរខាងមុខ <ArrowRight className="w-4 h-4" />
-            </motion.button>
+              <Dices className="w-3.5 h-3.5" /> បោះម្ដងទៀត
+            </button>
+          ) : (
+            hasChecked && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                onClick={rollDice}
+                className="py-2.5 px-5 bg-rose-500 hover:bg-rose-600 text-white text-xs font-black rounded-xl shadow-md shadow-rose-500/10 hover:shadow-lg transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                បន្តទៅសំណួរខាងមុខ <ArrowRight className="w-4 h-4" />
+              </motion.button>
+            )
           )}
         </div>
       </div>

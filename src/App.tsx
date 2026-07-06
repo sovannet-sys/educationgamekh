@@ -45,8 +45,9 @@ export default function App() {
   const [selectedCardVal, setSelectedCardVal] = useState<string>('');
   const [selectedWheelVal, setSelectedWheelVal] = useState<string>('');
   const [activeMainTab, setActiveMainTab] = useState<'math' | 'khmer' | 'admin'>('math');
-  const [mathPracticeMode, setMathPracticeMode] = useState<'menu' | 'auto' | 'cards' | 'wheel' | 'dice'>('menu');
+  const [mathPracticeMode, setMathPracticeMode] = useState<'menu' | 'auto' | 'cards' | 'wheel' | 'dice' | 'snakes'>('menu');
   const [khmerGameMode, setKhmerGameMode] = useState<'menu' | 'riddle' | 'spelling' | 'cards' | 'wheel'>('menu');
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const isAdmin = user?.email?.toLowerCase() === 'sovannetmeas.sm@gmail.com';
 
@@ -212,54 +213,106 @@ export default function App() {
           </div>
 
           {/* User Profile / Auth State */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 relative" id="user-profile-menu">
             {dbSyncing && (
               <span className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 border border-indigo-100 rounded-xl text-[10px] font-bold text-indigo-600 animate-pulse">
                 <Loader2 className="w-3 h-3 animate-spin text-indigo-500" />
                 ទិន្នន័យពី Cloud...
               </span>
             )}
-            {user ? (
-              <div className="flex items-center gap-2.5 bg-gray-50 border border-gray-100 rounded-2xl p-1 pr-3.5">
-                {user.photoURL ? (
-                  <img 
-                    src={user.photoURL} 
-                    alt={user.displayName || 'User'} 
-                    className="w-8 h-8 rounded-xl object-cover shadow-xs border border-white"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 font-bold flex items-center justify-center text-sm">
-                    {user.displayName ? user.displayName.charAt(0).toUpperCase() : <UserIcon className="w-4 h-4" />}
-                  </div>
+            
+            {(user || isGuest) && (
+              <div className="relative">
+                <button
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="flex items-center justify-center p-0.5 rounded-2xl hover:scale-105 active:scale-95 transition-all focus:outline-none cursor-pointer"
+                  title={user ? (user.displayName || 'ប្រវត្តិរូប') : 'ភ្ញៀវ'}
+                  id="user-avatar-btn"
+                >
+                  {user ? (
+                    user.photoURL ? (
+                      <img 
+                        src={user.photoURL} 
+                        alt={user.displayName || 'User'} 
+                        className="w-10 h-10 rounded-2xl object-cover shadow-sm border border-indigo-100"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 to-indigo-600 text-white font-black flex items-center justify-center text-base shadow-sm">
+                        {user.displayName ? user.displayName.charAt(0).toUpperCase() : <UserIcon className="w-5 h-5" />}
+                      </div>
+                    )
+                  ) : (
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-400 to-amber-500 text-white font-black flex items-center justify-center text-base shadow-sm">
+                      <UserIcon className="w-5 h-5" />
+                    </div>
+                  )}
+                </button>
+
+                {isUserMenuOpen && (
+                  <>
+                    {/* Invisible Backdrop */}
+                    <div className="fixed inset-0 z-30" onClick={() => setIsUserMenuOpen(false)} />
+                    
+                    {/* Dropdown Menu */}
+                    <div className="absolute right-0 mt-2.5 w-64 bg-white border border-gray-100 rounded-2xl shadow-xl p-4 z-40 animate-in fade-in slide-in-from-top-2 duration-150 text-left">
+                      <div className="flex flex-col items-center text-center pb-3 border-b border-gray-100 mb-3">
+                        {user ? (
+                          <>
+                            {user.photoURL ? (
+                              <img 
+                                src={user.photoURL} 
+                                alt={user.displayName || 'User'} 
+                                className="w-14 h-14 rounded-2xl object-cover shadow-sm border border-gray-100 mb-2"
+                                referrerPolicy="no-referrer"
+                              />
+                            ) : (
+                              <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-500 to-indigo-600 text-white font-black flex items-center justify-center text-xl shadow-sm mb-2">
+                                {user.displayName ? user.displayName.charAt(0).toUpperCase() : <UserIcon className="w-6 h-6" />}
+                              </div>
+                            )}
+                            <h4 className="text-sm font-black text-gray-800 tracking-tight">{user.displayName || 'អ្នកប្រើប្រាស់'}</h4>
+                            <p className="text-[11px] text-gray-400 font-medium font-sans mt-0.5 max-w-full truncate px-2">{user.email}</p>
+                          </>
+                        ) : (
+                          <>
+                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-400 to-amber-500 text-white font-black flex items-center justify-center text-xl shadow-sm mb-2">
+                              <UserIcon className="w-6 h-6" />
+                            </div>
+                            <h4 className="text-sm font-black text-gray-800 tracking-tight">ភ្ញៀវ (Guest)</h4>
+                            <p className="text-[11px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-lg mt-1">របៀបភ្ញៀវ</p>
+                          </>
+                        )}
+                      </div>
+
+                      {user ? (
+                        <button
+                          onClick={() => {
+                            setIsUserMenuOpen(false);
+                            handleSignOut();
+                          }}
+                          className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                          id="btn-dropdown-signout"
+                        >
+                          <LogOut className="w-4 h-4" /> ចាកចេញ (Sign Out)
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setIsUserMenuOpen(false);
+                            setIsGuest(false);
+                          }}
+                          className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 hover:text-indigo-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                          id="btn-dropdown-signin"
+                        >
+                          <UserIcon className="w-4 h-4" /> ចូលគណនីវិញ
+                        </button>
+                      )}
+                    </div>
+                  </>
                 )}
-                <div className="flex flex-col text-left">
-                  <span className="text-xs font-bold text-gray-800 leading-none">{user.displayName || 'អ្នកប្រើប្រាស់'}</span>
-                  <span className="text-[9px] text-gray-400 font-medium mt-0.5 max-w-[120px] truncate font-sans">{user.email}</span>
-                </div>
-                <button
-                  onClick={handleSignOut}
-                  className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors cursor-pointer ml-1"
-                  title="ចាកចេញ (Sign Out)"
-                  id="btn-signout"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
               </div>
-            ) : isGuest ? (
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-1.5 bg-amber-50 border border-amber-100 text-amber-800 rounded-xl text-[10px] font-bold">
-                  របៀបភ្ញៀវ
-                </span>
-                <button
-                  onClick={() => setIsGuest(false)}
-                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-bold transition-all shadow-xs cursor-pointer"
-                  id="btn-guest-login"
-                >
-                  ចូលគណនី
-                </button>
-              </div>
-            ) : null}
+            )}
           </div>
         </div>
       </header>
@@ -275,6 +328,7 @@ export default function App() {
               wheelTemplates={wheelTemplates}
               practiceMode={mathPracticeMode}
               setPracticeMode={setMathPracticeMode}
+              isAdmin={isAdmin}
             />
           </section>
         )}

@@ -2,26 +2,29 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Calculator, Check, X, ArrowRight, ArrowLeft, RotateCcw, Award, 
-  Flame, Sparkles, HelpCircle, GraduationCap, Play, ShieldAlert, Dices, Layers
+  Flame, Sparkles, HelpCircle, GraduationCap, Play, ShieldAlert, Dices, Layers, Trophy
 } from 'lucide-react';
 import { MathChallenge } from '../types';
 import { CardTemplate, WheelTemplate } from '../data/initialTemplates';
 import { RandomCards } from './RandomCards';
 import { SpinningWheel } from './SpinningWheel';
 import { MathDice } from './MathDice';
+import { SnakesAndLadders } from './SnakesAndLadders';
 
 interface MathPracticeProps {
   cardTemplates: CardTemplate[];
   wheelTemplates: WheelTemplate[];
-  practiceMode: 'menu' | 'auto' | 'cards' | 'wheel' | 'dice';
-  setPracticeMode: (mode: 'menu' | 'auto' | 'cards' | 'wheel' | 'dice') => void;
+  practiceMode: 'menu' | 'auto' | 'cards' | 'wheel' | 'dice' | 'snakes';
+  setPracticeMode: (mode: 'menu' | 'auto' | 'cards' | 'wheel' | 'dice' | 'snakes') => void;
+  isAdmin?: boolean;
 }
 
 export const MathPractice: React.FC<MathPracticeProps> = ({ 
   cardTemplates,
   wheelTemplates,
   practiceMode,
-  setPracticeMode
+  setPracticeMode,
+  isAdmin
 }) => {
   
   // Auto Mode States
@@ -215,12 +218,23 @@ export const MathPractice: React.FC<MathPracticeProps> = ({
           >
             ល្បែងគ្រាប់ឡុកឡាក់
           </button>
+          <button
+            onClick={() => setPracticeMode('snakes')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
+              practiceMode === 'snakes'
+                ? 'bg-white text-amber-600 shadow-xs'
+                : 'text-gray-500 hover:text-gray-800'
+            }`}
+            id="btn-mode-snakes"
+          >
+            ល្បែងពស់និងជណ្ដើរ
+          </button>
         </div>
       </div>
 
       {practiceMode === 'menu' ? (
         /* MENU SELECTION VIEW */
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 flex-1 w-full mt-2 py-4 animate-fade-in">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-5 flex-1 w-full mt-2 py-4 animate-fade-in">
           {/* Card 1: Automatic Quiz */}
           <div 
             onClick={() => setPracticeMode('auto')}
@@ -372,6 +386,45 @@ export const MathPractice: React.FC<MathPracticeProps> = ({
             </div>
 
             <div className="pt-6 flex items-center text-rose-700 font-black text-xs gap-1.5 group-hover:translate-x-1 transition-transform">
+              <span>ចូលលេងឥឡូវនេះ</span>
+              <ArrowRight className="w-4 h-4" />
+            </div>
+          </div>
+
+          {/* Card 5: Snakes & Ladders */}
+          <div 
+            onClick={() => setPracticeMode('snakes')}
+            className="group relative flex flex-col justify-between p-6 sm:p-7 rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50/50 via-white to-emerald-50/10 hover:border-emerald-300 hover:shadow-lg hover:shadow-emerald-500/5 transition-all duration-300 cursor-pointer overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-100/20 rounded-full blur-2xl transform translate-x-10 -translate-y-10 group-hover:bg-emerald-100/40 transition-all duration-300"></div>
+            
+            <div className="space-y-4 relative">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-sm">
+                <Trophy className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-[10px] font-extrabold text-emerald-600 tracking-wider uppercase bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full">
+                  ល្បែងក្តារអភិវឌ្ឍន៍បញ្ញា
+                </span>
+                <h3 className="text-lg font-black text-gray-800 font-sans mt-3">
+                  ល្បែងពស់ និងជណ្ដើរ
+                </h3>
+                <p className="text-xs text-gray-500 leading-relaxed mt-2.5">
+                  លេងប្រណាំងគ្នាដើម្បីឈានដល់ក្រឡា ១០០! ហ្វឹកហាត់ការរាប់លេខ និងការបូកលេខបន្ថែមដោយប្រើឡុកឡាក់ ១ គ្រាប់ដ៏សប្បាយ។
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                <span className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1 rounded-lg">
+                  🎲 ឡុកឡាក់ ១ គ្រាប់
+                </span>
+                <span className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1 rounded-lg">
+                  🤖 ប្រជែងនឹង CPU ឬមិត្តភក្តិ
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-6 flex items-center text-emerald-700 font-black text-xs gap-1.5 group-hover:translate-x-1 transition-transform">
               <span>ចូលលេងឥឡូវនេះ</span>
               <ArrowRight className="w-4 h-4" />
             </div>
@@ -589,9 +642,12 @@ export const MathPractice: React.FC<MathPracticeProps> = ({
             />
           </div>
         </div>
-      ) : (
+      ) : practiceMode === 'dice' ? (
         /* DICE MODE - Math Dice Game */
-        <MathDice onBackToMenu={() => setPracticeMode('menu')} />
+        <MathDice onBackToMenu={() => setPracticeMode('menu')} isAdmin={isAdmin} />
+      ) : (
+        /* SNAKES & LADDERS MODE */
+        <SnakesAndLadders onBackToMenu={() => setPracticeMode('menu')} />
       )}
     </div>
   );
