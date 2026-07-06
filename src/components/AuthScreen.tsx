@@ -14,7 +14,8 @@ import {
   User, 
   ArrowRight, 
   Loader2, 
-  AlertCircle 
+  AlertCircle,
+  ExternalLink
 } from 'lucide-react';
 
 interface AuthScreenProps {
@@ -134,22 +135,43 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, onContinueAsG
         </div>
 
         {/* Google Sign-In Button */}
-        <button
-          onClick={handleGoogleSignIn}
-          disabled={loading}
-          className="w-full py-3 px-4 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl font-bold text-sm flex items-center justify-center gap-3 transition-all cursor-pointer shadow-2xs disabled:opacity-50"
-          id="btn-google-signin"
-        >
-          <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
-            <g transform="matrix(1, 0, 0, 1, 0, 0)">
-              <path d="M21.35,11.1H12v2.7h5.38C17,15.17,15.09,16.7,12,16.7a4.8,4.8,0,0,1-4.5-3.3A4.8,4.8,0,0,1,7.5,12a4.8,4.8,0,0,1,.72-1.5,4.8,4.8,0,0,1,3.78-1.8c2,0,3.3.87,4.05,1.59l2.07-2a8.31,8.31,0,0,0-6.12-2.39,8.5,8.5,0,0,0-8,6.3,8.5,8.5,0,0,0,8,6.3c4.77,0,8-3.3,8-8.1A7.6,7.6,0,0,0,21.35,11.1Z" fill="#4285F4" />
-              <path d="M3.5,10.2A8.5,8.5,0,0,0,3.5,13.8L6.4,11.5A4.8,4.8,0,0,1,6.4,12.5Z" fill="#EA4335" />
-              <path d="M12,20.3a8.5,8.5,0,0,0,7.22-3.8l-2.61-2A4.8,4.8,0,0,1,12,16.7c-2.34,0-4-1.35-4.5-3.3l-2.9,2.2a8.5,8.5,0,0,0,7.4,4.7Z" fill="#34A853" />
-              <path d="M12,3.7A8.31,8.31,0,0,1,18.12,6.1l2.07-2A8.5,8.5,0,0,0,12,3.7,8.5,8.5,0,0,0,4.6,8L7.5,10.2A4.8,4.8,0,0,1,12,3.7Z" fill="#FBBC05" />
-            </g>
-          </svg>
-          ចូលតាមរយៈ Google Account
-        </button>
+        {isIframe ? (
+          <a
+            href={window.location.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full py-3 px-4 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 rounded-xl font-bold text-sm flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-xs"
+            id="btn-google-signin-iframe"
+          >
+            <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+              <g transform="matrix(1, 0, 0, 1, 0, 0)">
+                <path d="M21.35,11.1H12v2.7h5.38C17,15.17,15.09,16.7,12,16.7a4.8,4.8,0,0,1-4.5-3.3A4.8,4.8,0,0,1,7.5,12a4.8,4.8,0,0,1,.72-1.5,4.8,4.8,0,0,1,3.78-1.8c2,0,3.3.87,4.05,1.59l2.07-2a8.31,8.31,0,0,0-6.12-2.39,8.5,8.5,0,0,0-8,6.3,8.5,8.5,0,0,0,8,6.3c4.77,0,8-3.3,8-8.1A7.6,7.6,0,0,0,21.35,11.1Z" fill="#4285F4" />
+                <path d="M3.5,10.2A8.5,8.5,0,0,0,3.5,13.8L6.4,11.5A4.8,4.8,0,0,1,6.4,12.5Z" fill="#EA4335" />
+                <path d="M12,20.3a8.5,8.5,0,0,0,7.22-3.8l-2.61-2A4.8,4.8,0,0,1,12,16.7c-2.34,0-4-1.35-4.5-3.3l-2.9,2.2a8.5,8.5,0,0,0,7.4,4.7Z" fill="#34A853" />
+                <path d="M12,3.7A8.31,8.31,0,0,1,18.12,6.1l2.07-2A8.5,8.5,0,0,0,12,3.7,8.5,8.5,0,0,0,4.6,8L7.5,10.2A4.8,4.8,0,0,1,12,3.7Z" fill="#FBBC05" />
+              </g>
+            </svg>
+            <span>បើកក្នុង Tab ថ្មី ដើម្បីចូល Google</span>
+            <ExternalLink className="w-4 h-4 text-indigo-500 animate-pulse ml-auto" />
+          </a>
+        ) : (
+          <button
+            onClick={handleGoogleSignIn}
+            disabled={loading}
+            className="w-full py-3 px-4 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl font-bold text-sm flex items-center justify-center gap-3 transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+            id="btn-google-signin"
+          >
+            <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+              <g transform="matrix(1, 0, 0, 1, 0, 0)">
+                <path d="M21.35,11.1H12v2.7h5.38C17,15.17,15.09,16.7,12,16.7a4.8,4.8,0,0,1-4.5-3.3A4.8,4.8,0,0,1,7.5,12a4.8,4.8,0,0,1,.72-1.5,4.8,4.8,0,0,1,3.78-1.8c2,0,3.3.87,4.05,1.59l2.07-2a8.31,8.31,0,0,0-6.12-2.39,8.5,8.5,0,0,0-8,6.3,8.5,8.5,0,0,0,8,6.3c4.77,0,8-3.3,8-8.1A7.6,7.6,0,0,0,21.35,11.1Z" fill="#4285F4" />
+                <path d="M3.5,10.2A8.5,8.5,0,0,0,3.5,13.8L6.4,11.5A4.8,4.8,0,0,1,6.4,12.5Z" fill="#EA4335" />
+                <path d="M12,20.3a8.5,8.5,0,0,0,7.22-3.8l-2.61-2A4.8,4.8,0,0,1,12,16.7c-2.34,0-4-1.35-4.5-3.3l-2.9,2.2a8.5,8.5,0,0,0,7.4,4.7Z" fill="#34A853" />
+                <path d="M12,3.7A8.31,8.31,0,0,1,18.12,6.1l2.07-2A8.5,8.5,0,0,0,12,3.7,8.5,8.5,0,0,0,4.6,8L7.5,10.2A4.8,4.8,0,0,1,12,3.7Z" fill="#FBBC05" />
+              </g>
+            </svg>
+            ចូលតាមរយៈ Google Account
+          </button>
+        )}
 
         {/* Divider */}
         <div className="flex items-center my-6">
