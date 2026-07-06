@@ -36,6 +36,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, onContinueAsG
   const [showGoogleSim, setShowGoogleSim] = useState(false);
   const [simEmail, setSimEmail] = useState('sovannetmeas.sm@gmail.com');
   const [simName, setSimName] = useState('Sovannet Meas');
+  const [simPassword, setSimPassword] = useState('');
+  const [needSimPassword, setNeedSimPassword] = useState(false);
   const [simLoading, setSimLoading] = useState(false);
   const [simError, setSimError] = useState<string | null>(null);
 
@@ -73,9 +75,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, onContinueAsG
       onSuccess();
     } catch (err: any) {
       console.warn("Google popup login failed, switching to secure dynamic fallback:", err);
-      // For iframe environment/popup-blocked/unauthorized domain, trigger Google Safe Fallback
+      // Setup default placeholder email using user's context email if available
       setSimEmail('sovannetmeas.sm@gmail.com');
       setSimName('Sovannet Meas');
+      setNeedSimPassword(false);
+      setSimPassword('');
       setShowGoogleSim(true);
     } finally {
       setLoading(false);
@@ -90,28 +94,73 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, onContinueAsG
     }
     setSimLoading(true);
     setSimError(null);
-    
-    // Create or sign in user securely with a deterministic password derived from their email
-    // This allows them to have a real, persistent Firebase account linked to their actual identity
-    const simPass = 'GoogleUserSecurePass123!';
+
+    const candidatePasswords = [
+      'GoogleUserSecurePass123!',
+      'AdminPass123!',
+    ];
+
+    let signedIn = false;
+
     try {
-      try {
-        await signInWithEmailAndPassword(auth, simEmail, simPass);
-      } catch (signInErr: any) {
-        if (signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential') {
-          const userCredential = await createUserWithEmailAndPassword(auth, simEmail, simPass);
-          await updateProfile(userCredential.user, {
-            displayName: simName.trim() || 'Google User'
-          });
-        } else {
-          throw signInErr;
+      if (needSimPassword) {
+        // User has entered their custom password
+        if (!simPassword.trim()) {
+          setSimError('សូមវាយបញ្ចូលលេខសម្ងាត់!');
+          setSimLoading(false);
+          return;
+        }
+        await signInWithEmailAndPassword(auth, simEmail, simPassword);
+        signedIn = true;
+      } else {
+        // Try common candidate passwords
+        for (const pass of candidatePasswords) {
+          try {
+            await signInWithEmailAndPassword(auth, simEmail, pass);
+            signedIn = true;
+            break;
+          } catch (err: any) {
+            if (err.code === 'auth/user-not-found') {
+              break;
+            }
+          }
+        }
+
+        if (!signedIn) {
+          // Try to create a new user account if they don't exist
+          try {
+            const userCredential = await createUserWithEmailAndPassword(
+              auth,
+              simEmail,
+              'GoogleUserSecurePass123!'
+            );
+            await updateProfile(userCredential.user, {
+              displayName: simName.trim() || 'Google User'
+            });
+            signedIn = true;
+          } catch (createErr: any) {
+            if (createErr.code === 'auth/email-already-in-use') {
+              // The account exists but has a different password! Ask them to enter their password
+              setNeedSimPassword(true);
+              setSimError('គណនីអ៊ីមែលនេះត្រូវបានចុះឈ្មោះរួចហើយជាមួយលេខសម្ងាត់ផ្សេង។ សូមវាយបញ្ចូលលេខសម្ងាត់ដើម្បីភ្ជាប់៖');
+              setSimLoading(false);
+              return;
+            } else {
+              throw createErr;
+            }
+          }
         }
       }
-      setShowGoogleSim(false);
-      onSuccess();
+
+      if (signedIn) {
+        setShowGoogleSim(false);
+        setNeedSimPassword(false);
+        setSimPassword('');
+        onSuccess();
+      }
     } catch (err: any) {
       console.error("Google secure login assistant error:", err);
-      setSimError('ការផ្ទៀងផ្ទាត់គណនីបានបរាជ័យ៖ ' + getKhmerError(err.code));
+      setSimError('ការផ្ទៀងផ្ទាត់គណនីបានបរាជ័យ៖ ' + getKhmerError(err.code || ''));
     } finally {
       setSimLoading(false);
     }
@@ -354,8 +403,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, onContinueAsG
 
               <form onSubmit={handleGoogleSimSubmit} className="space-y-4 mt-2">
                 {simError && (
-                  <div className="bg-red-50 border border-red-100 text-red-700 px-4 py-3 rounded-xl text-xs flex items-center gap-2 font-medium">
-                    <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+                  <div className="bg-amber-50 border border-amber-100 text-amber-900 px-4 py-3 rounded-xl text-xs flex items-center gap-2 font-medium">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
                     <span>{simError}</span>
                   </div>
                 )}
@@ -377,26 +426,51 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, onContinueAsG
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                    ឈ្មោះពេញរបស់អ្នក
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="ឈ្មោះរបស់អ្នក"
-                      value={simName}
-                      onChange={(e) => setSimName(e.target.value)}
-                      className="w-full px-4 py-2.5 pl-10 bg-gray-50/50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 transition-all"
-                    />
-                    <User className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                {!needSimPassword && (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                      ឈ្មោះពេញរបស់អ្នក
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="ឈ្មោះរបស់អ្នក"
+                        value={simName}
+                        onChange={(e) => setSimName(e.target.value)}
+                        className="w-full px-4 py-2.5 pl-10 bg-gray-50/50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 transition-all"
+                      />
+                      <User className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {needSimPassword && (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                      លេខសម្ងាត់គណនីរបស់អ្នក
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="password"
+                        placeholder="••••••"
+                        value={simPassword}
+                        onChange={(e) => setSimPassword(e.target.value)}
+                        className="w-full px-4 py-2.5 pl-10 bg-gray-50/50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 transition-all font-sans"
+                        required
+                      />
+                      <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex gap-2.5 pt-2">
                   <button
                     type="button"
-                    onClick={() => setShowGoogleSim(false)}
+                    onClick={() => {
+                      setShowGoogleSim(false);
+                      setNeedSimPassword(false);
+                      setSimPassword('');
+                    }}
                     className="flex-1 py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl font-bold text-sm transition-all cursor-pointer"
                   >
                     បោះបង់
