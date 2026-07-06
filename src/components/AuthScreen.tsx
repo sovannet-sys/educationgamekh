@@ -40,6 +40,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, onContinueAsG
   const [needSimPassword, setNeedSimPassword] = useState(false);
   const [simLoading, setSimLoading] = useState(false);
   const [simError, setSimError] = useState<string | null>(null);
+  const [lastGoogleError, setLastGoogleError] = useState<string | null>(null);
 
   const getKhmerError = (code: string) => {
     switch (code) {
@@ -69,12 +70,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, onContinueAsG
   const handleGoogleSignIn = async () => {
     setLoading(true);
     setError(null);
+    setLastGoogleError(null);
     try {
       // Try actual popup sign-in
       await signInWithPopup(auth, googleProvider);
       onSuccess();
     } catch (err: any) {
       console.warn("Google popup login failed, switching to secure dynamic fallback:", err);
+      if (err.code) {
+        setLastGoogleError(err.code);
+      }
       // Let user type or choose their own Google email and name
       setSimEmail('');
       setSimName('');
@@ -387,19 +392,41 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, onContinueAsG
                     ការចូលគណនី Google (សេវាកម្មជំនួយ)
                   </h3>
                   <p className="text-xs text-gray-400 font-medium mt-0.5">
-                    Google Sign-In Popup ត្រូវបានរារាំងក្នុង iFrame នេះ
+                    បញ្ហាទាក់ទងនឹង iFrame ឬការកំណត់ Domain លើ Vercel
                   </p>
                 </div>
               </div>
 
-              <div className="text-xs text-gray-500 leading-relaxed bg-gray-50/50 border border-gray-100 rounded-2xl p-4.5 space-y-2">
-                <p>
-                  ដោយសារតែដែនដី (Domain) នេះជាបរិស្ថានសាកល្បងបណ្ដោះអាសន្ន និងមិនទាន់បានអនុញ្ញាតក្នុង Firebase Console ឡើយ។
-                </p>
-                <p className="font-semibold text-indigo-700">
-                  សូមវាយបញ្ចូលអ៊ីមែល Google របស់អ្នកខាងក្រោម ដើម្បីភ្ជាប់គណនីពិតរបស់អ្នកភ្លាមៗ!
-                </p>
-              </div>
+              {(lastGoogleError === 'auth/unauthorized-domain' || window.location.hostname.includes('vercel.app')) ? (
+                <div className="text-xs text-gray-600 leading-relaxed bg-amber-50/60 border border-amber-100 rounded-2xl p-4.5 space-y-2.5 shadow-xs">
+                  <p className="font-bold text-amber-950 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                    របៀបអនុញ្ញាត Domain លើ Firebase Console (សម្រាប់ Vercel)
+                  </p>
+                  <p className="text-gray-500 text-[11px]">
+                    Firebase តម្រូវឱ្យចុះឈ្មោះដែនដីនេះជាមុនសិន ទើបអាចប្រើប្រាស់ Google Login បាន៖
+                  </p>
+                  <ol className="list-decimal list-inside space-y-1 pl-1 text-[11px] text-gray-600 font-medium">
+                    <li>ចូលទៅកាន់ <a href="https://console.firebase.google.com/" target="_blank" rel="noreferrer" className="text-indigo-600 underline font-bold">Firebase Console</a></li>
+                    <li>ទៅកាន់ <b>Authentication</b> &rarr; <b>Settings</b> &rarr; <b>Authorized domains</b></li>
+                    <li>ចុចប៊ូតុង <b>Add domain</b> រួចបញ្ចូល៖ <code className="bg-white px-1.5 py-0.5 border border-gray-200 rounded-md font-mono font-bold text-rose-600 text-xs select-all">{window.location.hostname}</code></li>
+                    <li>ចុច <b>Add</b> រួចសាកល្បងចូលតាម Google ឡើងវិញ!</li>
+                  </ol>
+                  <div className="h-[1px] bg-amber-200/50 my-2"></div>
+                  <p className="text-[10px] text-amber-900 font-semibold">
+                    💡 ប្រសិនបើអ្នកចង់ចូលប្រើប្រាស់ជាបន្ទាន់ដោយមិនបាច់កំណត់ Firebase ទេ៖ សូមវាយបញ្ចូលអ៊ីមែល Google របស់អ្នកខាងក្រោម ដើម្បីចូលគណនីភ្លាមៗ!
+                  </p>
+                </div>
+              ) : (
+                <div className="text-xs text-gray-500 leading-relaxed bg-gray-50/50 border border-gray-100 rounded-2xl p-4.5 space-y-2">
+                  <p>
+                    ដោយសារតែដែនដី (Domain) នេះជាបរិស្ថានសាកល្បង ឬមិនទាន់បានអនុញ្ញាតក្នុង Firebase Console ឡើយ។
+                  </p>
+                  <p className="font-semibold text-indigo-700">
+                    សូមវាយបញ្ចូលអ៊ីមែល Google របស់អ្នកខាងក្រោម ដើម្បីភ្ជាប់គណនីពិតរបស់អ្នកភ្លាមៗ!
+                  </p>
+                </div>
+              )}
 
               <form onSubmit={handleGoogleSimSubmit} className="space-y-4 mt-2">
                 {simError && (
