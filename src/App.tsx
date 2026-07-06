@@ -47,7 +47,7 @@ export default function App() {
   const [mathPracticeMode, setMathPracticeMode] = useState<'auto' | 'sandbox'>('auto');
   const [khmerGameMode, setKhmerGameMode] = useState<'riddle' | 'spelling' | 'sandbox'>('riddle');
 
-  const isAdmin = user?.email === 'SovannetMeas.SM@gmail.com';
+  const isAdmin = user?.email?.toLowerCase() === 'sovannetmeas.sm@gmail.com';
 
   useEffect(() => {
     if (activeMainTab === 'admin' && !isAdmin) {
