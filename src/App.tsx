@@ -15,6 +15,7 @@ import {
   CardTemplate, WheelTemplate, RiddleTemplate, SpellingTemplate,
   DEFAULT_CARD_TEMPLATES, DEFAULT_WHEEL_TEMPLATES, DEFAULT_RIDDLES, DEFAULT_SPELLINGS 
 } from './data/initialTemplates';
+import { testConnection, fetchGlobalTemplates, saveGlobalTemplates } from './lib/dbService';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -44,8 +45,8 @@ export default function App() {
   const [selectedCardVal, setSelectedCardVal] = useState<string>('');
   const [selectedWheelVal, setSelectedWheelVal] = useState<string>('');
   const [activeMainTab, setActiveMainTab] = useState<'math' | 'khmer' | 'admin'>('math');
-  const [mathPracticeMode, setMathPracticeMode] = useState<'auto' | 'sandbox'>('auto');
-  const [khmerGameMode, setKhmerGameMode] = useState<'riddle' | 'spelling' | 'sandbox'>('riddle');
+  const [mathPracticeMode, setMathPracticeMode] = useState<'menu' | 'auto' | 'cards' | 'wheel' | 'dice'>('menu');
+  const [khmerGameMode, setKhmerGameMode] = useState<'menu' | 'riddle' | 'spelling' | 'cards' | 'wheel'>('menu');
 
   const isAdmin = user?.email?.toLowerCase() === 'sovannetmeas.sm@gmail.com';
 
@@ -75,6 +76,55 @@ export default function App() {
     const local = localStorage.getItem('custom_spellings');
     return local ? JSON.parse(local) : DEFAULT_SPELLINGS;
   });
+
+  const [dbSyncing, setDbSyncing] = useState(false);
+
+  // Sync templates with Firestore so all users share the exact same presets
+  useEffect(() => {
+    const syncDbTemplates = async () => {
+      setDbSyncing(true);
+      try {
+        // Test connection
+        await testConnection();
+
+        // Fetch shared templates from Firestore
+        const remoteTemplates = await fetchGlobalTemplates();
+        if (remoteTemplates) {
+          console.log("Loaded global shared templates from Firestore:", remoteTemplates);
+          setCardTemplates(remoteTemplates.cardTemplates);
+          setWheelTemplates(remoteTemplates.wheelTemplates);
+          setRiddles(remoteTemplates.riddles);
+          setSpellings(remoteTemplates.spellings);
+
+          // Update local backup
+          localStorage.setItem('custom_card_templates', JSON.stringify(remoteTemplates.cardTemplates));
+          localStorage.setItem('custom_wheel_templates', JSON.stringify(remoteTemplates.wheelTemplates));
+          localStorage.setItem('custom_riddles', JSON.stringify(remoteTemplates.riddles));
+          localStorage.setItem('custom_spellings', JSON.stringify(remoteTemplates.spellings));
+        } else {
+          // If Firestore document is empty and current user is Admin, seed defaults
+          if (user && user.email?.toLowerCase() === 'sovannetmeas.sm@gmail.com') {
+            console.log("Empty database. Seeding Firestore with defaults as Admin...");
+            const defaultPayload = {
+              cardTemplates: DEFAULT_CARD_TEMPLATES,
+              wheelTemplates: DEFAULT_WHEEL_TEMPLATES,
+              riddles: DEFAULT_RIDDLES,
+              spellings: DEFAULT_SPELLINGS
+            };
+            await saveGlobalTemplates(defaultPayload);
+          }
+        }
+      } catch (err) {
+        console.warn("Firestore sync warning, using local storage cache:", err);
+      } finally {
+        setDbSyncing(false);
+      }
+    };
+
+    if (!authLoading) {
+      syncDbTemplates();
+    }
+  }, [authLoading, user]);
 
   const handleResetAll = () => {
     localStorage.removeItem('custom_card_templates');
@@ -114,10 +164,10 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight flex items-center gap-1.5 font-sans">
-                សាលាហ្វឹកហាត់ <span className="text-indigo-600">ចៃដន្យ</span>
+                ល្បែងសិក្សា <span className="text-indigo-600">ខ្មែរ</span>
               </h1>
               <p className="text-xs text-gray-500 font-medium mt-0.5">
-                Math Practice & Khmer Word Game Studio with Customizable Randomizers
+                កម្មវិធីល្បែងសិក្សាបណ្ដុះបណ្ដាលបញ្ញា និងគណិតវិទ្យាសម្រាប់ខ្មែរ
               </p>
             </div>
           </div>
@@ -163,6 +213,12 @@ export default function App() {
 
           {/* User Profile / Auth State */}
           <div className="flex items-center gap-3">
+            {dbSyncing && (
+              <span className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 border border-indigo-100 rounded-xl text-[10px] font-bold text-indigo-600 animate-pulse">
+                <Loader2 className="w-3 h-3 animate-spin text-indigo-500" />
+                ទិន្នន័យពី Cloud...
+              </span>
+            )}
             {user ? (
               <div className="flex items-center gap-2.5 bg-gray-50 border border-gray-100 rounded-2xl p-1 pr-3.5">
                 {user.photoURL ? (

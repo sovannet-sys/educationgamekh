@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Calculator, Check, X, ArrowRight, RotateCcw, Award, 
-  Flame, Sparkles, HelpCircle, GraduationCap, Play, ShieldAlert
+  Calculator, Check, X, ArrowRight, ArrowLeft, RotateCcw, Award, 
+  Flame, Sparkles, HelpCircle, GraduationCap, Play, ShieldAlert, Dices, Layers
 } from 'lucide-react';
 import { MathChallenge } from '../types';
 import { CardTemplate, WheelTemplate } from '../data/initialTemplates';
 import { RandomCards } from './RandomCards';
 import { SpinningWheel } from './SpinningWheel';
+import { MathDice } from './MathDice';
 
 interface MathPracticeProps {
   cardTemplates: CardTemplate[];
   wheelTemplates: WheelTemplate[];
-  practiceMode: 'auto' | 'sandbox';
-  setPracticeMode: (mode: 'auto' | 'sandbox') => void;
+  practiceMode: 'menu' | 'auto' | 'cards' | 'wheel' | 'dice';
+  setPracticeMode: (mode: 'menu' | 'auto' | 'cards' | 'wheel' | 'dice') => void;
 }
 
 export const MathPractice: React.FC<MathPracticeProps> = ({ 
@@ -150,6 +151,15 @@ export const MathPractice: React.FC<MathPracticeProps> = ({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 border-b border-gray-100 pb-4 gap-4">
         <div className="flex items-center gap-3">
+          {practiceMode !== 'menu' && (
+            <button
+              onClick={() => setPracticeMode('menu')}
+              className="p-2 bg-gray-50 hover:bg-gray-100 text-gray-500 hover:text-gray-800 rounded-xl transition-all mr-1 cursor-pointer flex items-center justify-center border border-gray-100"
+              title="ត្រឡប់ទៅបញ្ជីល្បែងវិញ"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+          )}
           <div className="p-2.5 bg-amber-50 text-amber-600 rounded-2xl">
             <GraduationCap className="w-6 h-6" />
           </div>
@@ -160,10 +170,10 @@ export const MathPractice: React.FC<MathPracticeProps> = ({
         </div>
 
         {/* Toggle between modes */}
-        <div className="flex bg-gray-100 p-1 rounded-xl shrink-0 self-start sm:self-center">
+        <div className="flex flex-wrap bg-gray-100 p-1 rounded-xl shrink-0 self-start sm:self-center gap-1">
           <button
             onClick={() => setPracticeMode('auto')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
               practiceMode === 'auto'
                 ? 'bg-white text-amber-600 shadow-xs'
                 : 'text-gray-500 hover:text-gray-800'
@@ -173,20 +183,201 @@ export const MathPractice: React.FC<MathPracticeProps> = ({
             លំហាត់ស្វ័យប្រវត្ត
           </button>
           <button
-            onClick={() => setPracticeMode('sandbox')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-              practiceMode === 'sandbox'
+            onClick={() => setPracticeMode('cards')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
+              practiceMode === 'cards'
                 ? 'bg-white text-amber-600 shadow-xs'
                 : 'text-gray-500 hover:text-gray-800'
             }`}
-            id="btn-mode-sandbox"
+            id="btn-mode-cards"
           >
-            លេងជាមួយ កាត & ថាសបង្វិល
+            ការបើកកាតចៃដន្យ
+          </button>
+          <button
+            onClick={() => setPracticeMode('wheel')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
+              practiceMode === 'wheel'
+                ? 'bg-white text-amber-600 shadow-xs'
+                : 'text-gray-500 hover:text-gray-800'
+            }`}
+            id="btn-mode-wheel"
+          >
+            ការបង្វិលថាសសំណាង
+          </button>
+          <button
+            onClick={() => setPracticeMode('dice')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
+              practiceMode === 'dice'
+                ? 'bg-white text-amber-600 shadow-xs'
+                : 'text-gray-500 hover:text-gray-800'
+            }`}
+            id="btn-mode-dice"
+          >
+            ល្បែងគ្រាប់ឡុកឡាក់
           </button>
         </div>
       </div>
 
-      {practiceMode === 'auto' ? (
+      {practiceMode === 'menu' ? (
+        /* MENU SELECTION VIEW */
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 flex-1 w-full mt-2 py-4 animate-fade-in">
+          {/* Card 1: Automatic Quiz */}
+          <div 
+            onClick={() => setPracticeMode('auto')}
+            className="group relative flex flex-col justify-between p-6 sm:p-7 rounded-3xl border border-amber-100 bg-gradient-to-br from-amber-50/50 via-white to-amber-50/10 hover:border-amber-300 hover:shadow-lg hover:shadow-amber-500/5 transition-all duration-300 cursor-pointer overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-100/20 rounded-full blur-2xl transform translate-x-10 -translate-y-10 group-hover:bg-amber-100/40 transition-all duration-300"></div>
+            
+            <div className="space-y-4 relative">
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center shadow-sm">
+                <Calculator className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-[10px] font-extrabold text-amber-600 tracking-wider uppercase bg-amber-50 border border-amber-100 px-2.5 py-1 rounded-full">
+                  ល្បែងហាត់ខួរក្បាលស្វ័យប្រវត្ត
+                </span>
+                <h3 className="text-lg font-black text-gray-800 font-sans mt-3">
+                  លំហាត់គណនាស្វ័យប្រវត្ត
+                </h3>
+                <p className="text-xs text-gray-500 leading-relaxed mt-2.5">
+                  អនុវត្តការបូក ដក គុណ ចែក លេខស្វ័យប្រវត្តិតាមរយៈសំណួរចម្លើយច្រើនជម្រើស ឬការបំពេញចម្លើយផ្ទាល់ខ្លួន ដោយមានការកំណត់កម្រិតលំបាកផ្សេងៗគ្នា។
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                <span className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1 rounded-lg">
+                  🎯 កម្រិត៖ ងាយ, មធ្យម, ពិបាក
+                </span>
+                <span className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1 rounded-lg">
+                  🔥 ប្រព័ន្ធរក្សាទុក Streak
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-6 flex items-center text-amber-700 font-black text-xs gap-1.5 group-hover:translate-x-1 transition-transform">
+              <span>ចូលលេងឥឡូវនេះ</span>
+              <ArrowRight className="w-4 h-4" />
+            </div>
+          </div>
+
+          {/* Card 2: Random Cards */}
+          <div 
+            onClick={() => setPracticeMode('cards')}
+            className="group relative flex flex-col justify-between p-6 sm:p-7 rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50/50 via-white to-indigo-50/10 hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-500/5 transition-all duration-300 cursor-pointer overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-100/20 rounded-full blur-2xl transform translate-x-10 -translate-y-10 group-hover:bg-indigo-100/40 transition-all duration-300"></div>
+            
+            <div className="space-y-4 relative">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center shadow-sm">
+                <Dices className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-[10px] font-extrabold text-indigo-600 tracking-wider uppercase bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-full">
+                  លេងដោយសេរី / ប្ដូរតាមចិត្ត
+                </span>
+                <h3 className="text-lg font-black text-gray-800 font-sans mt-3">
+                  ការបើកកាតចៃដន្យ
+                </h3>
+                <p className="text-xs text-gray-500 leading-relaxed mt-2.5">
+                  អនុវត្តការគណនាដោយសេរី ដោយការចាក់កាតចៃដន្យ ដើម្បីជ្រើសរើសប្រមាណវិធី ឬពិន្ទុរង្វាន់ផ្សេងៗ។ អ្នកអាចបង្កើតគំរូកាតដោយខ្លួនឯង!
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                <span className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1 rounded-lg">
+                  🎴 កាតចៃដន្យស្អាតៗ
+                </span>
+                <span className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1 rounded-lg">
+                  ⚙️ កែប្រែគំរូដោយខ្លួនឯង
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-6 flex items-center text-indigo-700 font-black text-xs gap-1.5 group-hover:translate-x-1 transition-transform">
+              <span>ចូលលេងឥឡូវនេះ</span>
+              <ArrowRight className="w-4 h-4" />
+            </div>
+          </div>
+
+          {/* Card 3: Spinning Wheel */}
+          <div 
+            onClick={() => setPracticeMode('wheel')}
+            className="group relative flex flex-col justify-between p-6 sm:p-7 rounded-3xl border border-violet-100 bg-gradient-to-br from-violet-50/50 via-white to-violet-50/10 hover:border-violet-300 hover:shadow-lg hover:shadow-violet-500/5 transition-all duration-300 cursor-pointer overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-violet-100/20 rounded-full blur-2xl transform translate-x-10 -translate-y-10 group-hover:bg-violet-100/40 transition-all duration-300"></div>
+            
+            <div className="space-y-4 relative">
+              <div className="w-12 h-12 rounded-2xl bg-violet-100 text-violet-600 flex items-center justify-center shadow-sm">
+                <Layers className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-[10px] font-extrabold text-violet-600 tracking-wider uppercase bg-violet-50 border border-violet-100 px-2.5 py-1 rounded-full">
+                  លេងដោយសេរី / ប្ដូរតាមចិត្ត
+                </span>
+                <h3 className="text-lg font-black text-gray-800 font-sans mt-3">
+                  ការបង្វិលថាសសំណាង
+                </h3>
+                <p className="text-xs text-gray-500 leading-relaxed mt-2.5">
+                  អនុវត្តគណិតវិទ្យាដោយការបង្វិលថាសសំណាង ដើម្បីជ្រើសរើសប្រមាណវិធី ឬចម្លើយដោយចៃដន្យ។ អ្នកអាចកែប្រែគំរូថាសបង្វិលបានតាមចិត្ត!
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                <span className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1 rounded-lg">
+                  🎡 ថាសវិលសំណាងចម្រុះ
+                </span>
+                <span className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1 rounded-lg">
+                  ⚙️ កែប្រែគំរូដោយខ្លួនឯង
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-6 flex items-center text-violet-700 font-black text-xs gap-1.5 group-hover:translate-x-1 transition-transform">
+              <span>ចូលលេងឥឡូវនេះ</span>
+              <ArrowRight className="w-4 h-4" />
+            </div>
+          </div>
+
+          {/* Card 4: Dice Game */}
+          <div 
+            onClick={() => setPracticeMode('dice')}
+            className="group relative flex flex-col justify-between p-6 sm:p-7 rounded-3xl border border-rose-100 bg-gradient-to-br from-rose-50/50 via-white to-rose-50/10 hover:border-rose-300 hover:shadow-lg hover:shadow-rose-500/5 transition-all duration-300 cursor-pointer overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-rose-100/20 rounded-full blur-2xl transform translate-x-10 -translate-y-10 group-hover:bg-rose-100/40 transition-all duration-300"></div>
+            
+            <div className="space-y-4 relative">
+              <div className="w-12 h-12 rounded-2xl bg-rose-150 text-rose-600 flex items-center justify-center shadow-sm">
+                <Dices className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-[10px] font-extrabold text-rose-600 tracking-wider uppercase bg-rose-50 border border-rose-100 px-2.5 py-1 rounded-full">
+                  ល្បែងគណនាបែបកម្សាន្ត
+                </span>
+                <h3 className="text-lg font-black text-gray-800 font-sans mt-3">
+                  ល្បែងគ្រាប់ឡុកឡាក់
+                </h3>
+                <p className="text-xs text-gray-500 leading-relaxed mt-2.5">
+                  បោះគ្រាប់ឡុកឡាក់ចៃដន្យ រួចគណនាផលបូក ផលដក ឬផលគុណ។ ជួយបង្កើនល្បឿននៃការគណនា និងភាពសប្បាយរីករាយ!
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                <span className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1 rounded-lg">
+                  🎲 ២ ឬ ៣ គ្រាប់
+                </span>
+                <span className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1 rounded-lg">
+                  🔥 រក្សាទុក Streak
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-6 flex items-center text-rose-700 font-black text-xs gap-1.5 group-hover:translate-x-1 transition-transform">
+              <span>ចូលលេងឥឡូវនេះ</span>
+              <ArrowRight className="w-4 h-4" />
+            </div>
+          </div>
+        </div>
+      ) : practiceMode === 'auto' ? (
         /* AUTOMATIC QUIZ GENERATOR */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
           {/* Controls - 4 cols */}
@@ -378,25 +569,29 @@ export const MathPractice: React.FC<MathPracticeProps> = ({
             )}
           </div>
         </div>
-      ) : (
-        /* CUSTOM SANDBOX MODE - ONLY Random Cards and Spinning Wheel */
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 flex-1 w-full mt-2 animate-fade-in">
-          {/* Card Selector Widget */}
-          <div className="h-full">
+      ) : practiceMode === 'cards' ? (
+        /* CUSTOM CARDS MODE - ONLY Random Cards */
+        <div className="flex justify-center flex-1 w-full max-w-2xl mx-auto mt-2 animate-fade-in">
+          <div className="w-full h-full">
             <RandomCards 
               templates={cardTemplates}
               onCardSelected={() => {}} 
             />
           </div>
-
-          {/* Spinning Wheel Widget */}
-          <div className="h-full">
+        </div>
+      ) : practiceMode === 'wheel' ? (
+        /* CUSTOM WHEEL MODE - ONLY Spinning Wheel */
+        <div className="flex justify-center flex-1 w-full max-w-2xl mx-auto mt-2 animate-fade-in">
+          <div className="w-full h-full">
             <SpinningWheel 
               templates={wheelTemplates}
               onSpinCompleted={() => {}} 
             />
           </div>
         </div>
+      ) : (
+        /* DICE MODE - Math Dice Game */
+        <MathDice onBackToMenu={() => setPracticeMode('menu')} />
       )}
     </div>
   );

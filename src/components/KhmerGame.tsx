@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   BookOpen, Check, X, RotateCcw, HelpCircle, Sparkles, 
-  Flame, Award, ArrowRight, Lightbulb, Keyboard, Shuffle 
+  Flame, Award, ArrowRight, ArrowLeft, Lightbulb, Keyboard, Shuffle, Dices, Layers 
 } from 'lucide-react';
 import { RiddleTemplate, SpellingTemplate, CardTemplate, WheelTemplate, DEFAULT_RIDDLES, DEFAULT_SPELLINGS } from '../data/initialTemplates';
 import { RandomCards } from './RandomCards';
@@ -13,8 +13,8 @@ interface KhmerGameProps {
   wheelTemplates: WheelTemplate[];
   customRiddles?: RiddleTemplate[];
   customSpellings?: SpellingTemplate[];
-  khmerMode: 'riddle' | 'spelling' | 'sandbox';
-  setKhmerMode: (mode: 'riddle' | 'spelling' | 'sandbox') => void;
+  khmerMode: 'menu' | 'riddle' | 'spelling' | 'cards' | 'wheel';
+  setKhmerMode: (mode: 'menu' | 'riddle' | 'spelling' | 'cards' | 'wheel') => void;
 }
 
 export const KhmerGame: React.FC<KhmerGameProps> = ({ 
@@ -94,6 +94,15 @@ export const KhmerGame: React.FC<KhmerGameProps> = ({
       {/* Widget Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 border-b border-gray-100 pb-4 gap-4">
         <div className="flex items-center gap-3">
+          {khmerMode !== 'menu' && (
+            <button
+              onClick={() => setKhmerMode('menu')}
+              className="p-2 bg-gray-50 hover:bg-gray-100 text-gray-500 hover:text-gray-800 rounded-xl transition-all mr-1 cursor-pointer flex items-center justify-center border border-gray-100"
+              title="ត្រឡប់ទៅបញ្ជីល្បែងវិញ"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+          )}
           <div className="p-2.5 bg-violet-50 text-violet-600 rounded-2xl">
             <BookOpen className="w-6 h-6" />
           </div>
@@ -104,10 +113,10 @@ export const KhmerGame: React.FC<KhmerGameProps> = ({
         </div>
 
         {/* Sub-tabs Selection */}
-        <div className="flex bg-gray-100 p-1 rounded-xl shrink-0 self-start sm:self-center">
+        <div className="flex flex-wrap bg-gray-100 p-1 rounded-xl shrink-0 self-start sm:self-center gap-1">
           <button
             onClick={() => { setKhmerMode('riddle'); resetQuestionState(); }}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
               khmerMode === 'riddle'
                 ? 'bg-white text-violet-600 shadow-xs'
                 : 'text-gray-500 hover:text-gray-800'
@@ -117,7 +126,7 @@ export const KhmerGame: React.FC<KhmerGameProps> = ({
           </button>
           <button
             onClick={() => { setKhmerMode('spelling'); resetQuestionState(); }}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
               khmerMode === 'spelling'
                 ? 'bg-white text-violet-600 shadow-xs'
                 : 'text-gray-500 hover:text-gray-800'
@@ -126,19 +135,188 @@ export const KhmerGame: React.FC<KhmerGameProps> = ({
             បំពេញអក្ខរាវិរុទ្ធ
           </button>
           <button
-            onClick={() => { setKhmerMode('sandbox'); }}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-              khmerMode === 'sandbox'
+            onClick={() => { setKhmerMode('cards'); }}
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
+              khmerMode === 'cards'
                 ? 'bg-white text-violet-600 shadow-xs'
                 : 'text-gray-500 hover:text-gray-800'
             }`}
           >
-            លេងជាមួយកាត និងថាសបង្វិល
+            ការបើកកាតចៃដន្យ
+          </button>
+          <button
+            onClick={() => { setKhmerMode('wheel'); }}
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
+              khmerMode === 'wheel'
+                ? 'bg-white text-violet-600 shadow-xs'
+                : 'text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            ការបង្វិលថាសសំណាង
           </button>
         </div>
       </div>
 
-      {khmerMode !== 'sandbox' ? (
+      {khmerMode === 'menu' ? (
+        /* MENU SELECTION VIEW */
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 flex-1 w-full mt-2 py-4 animate-fade-in">
+          {/* Card 1: Riddles */}
+          <div 
+            onClick={() => { setKhmerMode('riddle'); resetQuestionState(); }}
+            className="group relative flex flex-col justify-between p-6 sm:p-7 rounded-3xl border border-violet-100 bg-gradient-to-br from-violet-50/50 via-white to-violet-50/10 hover:border-violet-300 hover:shadow-lg hover:shadow-violet-500/5 transition-all duration-300 cursor-pointer overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-violet-100/20 rounded-full blur-2xl transform translate-x-10 -translate-y-10 group-hover:bg-violet-100/40 transition-all duration-300"></div>
+            
+            <div className="space-y-4 relative">
+              <div className="w-12 h-12 rounded-2xl bg-violet-100 text-violet-600 flex items-center justify-center shadow-sm">
+                <HelpCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-[10px] font-extrabold text-violet-600 tracking-wider uppercase bg-violet-50 border border-violet-100 px-2.5 py-1 rounded-full">
+                  ល្បែងប្រជាប្រិយខ្មែរ
+                </span>
+                <h3 className="text-lg font-black text-gray-800 font-sans mt-3">
+                  ពាក្យបណ្តៅខ្មែរ
+                </h3>
+                <p className="text-xs text-gray-500 leading-relaxed mt-2.5">
+                  ល្បែងប្រជាប្រិយខ្មែរទាយពាក្យបណ្តៅ សាកល្បងប្រាជ្ញាស្មារតី ការគិតរហ័ស និងស្វែងយល់ពីវប្បធម៌ខ្មែរតាមរយៈប្រស្នាផ្សេងៗ។
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                <span className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1 rounded-lg">
+                  💡 ប្រព័ន្ធតម្រុយជំនួយ (Hint)
+                </span>
+                <span className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1 rounded-lg">
+                  🔥 រក្សាទុក Streak
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-6 flex items-center text-violet-700 font-black text-xs gap-1.5 group-hover:translate-x-1 transition-transform">
+              <span>ចូលលេងឥឡូវនេះ</span>
+              <ArrowRight className="w-4 h-4" />
+            </div>
+          </div>
+
+          {/* Card 2: Spelling */}
+          <div 
+            onClick={() => { setKhmerMode('spelling'); resetQuestionState(); }}
+            className="group relative flex flex-col justify-between p-6 sm:p-7 rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50/50 via-white to-emerald-50/10 hover:border-emerald-300 hover:shadow-lg hover:shadow-emerald-500/5 transition-all duration-300 cursor-pointer overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-100/20 rounded-full blur-2xl transform translate-x-10 -translate-y-10 group-hover:bg-emerald-100/40 transition-all duration-300"></div>
+            
+            <div className="space-y-4 relative">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-sm">
+                <Keyboard className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-[10px] font-extrabold text-emerald-600 tracking-wider uppercase bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full">
+                  លំហាត់អក្ខរាវិរុទ្ធ
+                </span>
+                <h3 className="text-lg font-black text-gray-800 font-sans mt-3">
+                  បំពេញអក្ខរាវិរុទ្ធ
+                </h3>
+                <p className="text-xs text-gray-500 leading-relaxed mt-2.5">
+                  លំហាត់ហ្វឹកហាត់បំពេញអក្ខរាវិរុទ្ធភាសាខ្មែរ ដើម្បីជួយឱ្យសិស្សានុសិស្សយល់ដឹងពីការសរសេរពាក្យបានត្រឹមត្រូវបំផុត។
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                <span className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1 rounded-lg">
+                  ✍️ បំពេញតួអក្សរ
+                </span>
+                <span className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1 rounded-lg">
+                  📖 បង្ហាញពាក្យពេញ
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-6 flex items-center text-emerald-700 font-black text-xs gap-1.5 group-hover:translate-x-1 transition-transform">
+              <span>ចូលលេងឥឡូវនេះ</span>
+              <ArrowRight className="w-4 h-4" />
+            </div>
+          </div>
+
+          {/* Card 3: Cards */}
+          <div 
+            onClick={() => { setKhmerMode('cards'); }}
+            className="group relative flex flex-col justify-between p-6 sm:p-7 rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50/50 via-white to-indigo-50/10 hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-500/5 transition-all duration-300 cursor-pointer overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-100/20 rounded-full blur-2xl transform translate-x-10 -translate-y-10 group-hover:bg-indigo-100/40 transition-all duration-300"></div>
+            
+            <div className="space-y-4 relative">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center shadow-sm">
+                <Dices className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-[10px] font-extrabold text-indigo-600 tracking-wider uppercase bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-full">
+                  លេងដោយសេរី / ប្ដូរតាមចិត្ត
+                </span>
+                <h3 className="text-lg font-black text-gray-800 font-sans mt-3">
+                  ការបើកកាតចៃដន្យ
+                </h3>
+                <p className="text-xs text-gray-500 leading-relaxed mt-2.5">
+                  ប្រើប្រាស់កាតចៃដន្យសម្រាប់ព្យញ្ជនៈខ្មែរ ដើម្បីផ្សំផ្គុំអក្សរ បង្កើតពាក្យថ្មីៗ ឬបង្កើតល្បែងហ្គេមសប្បាយៗជាក្រុម។
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                <span className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1 rounded-lg">
+                  🎴 កាតតួអក្សរចៃដន្យ
+                </span>
+                <span className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1 rounded-lg">
+                  ⚙️ កែប្រែគំរូដោយខ្លួនឯង
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-6 flex items-center text-indigo-700 font-black text-xs gap-1.5 group-hover:translate-x-1 transition-transform">
+              <span>ចូលលេងឥឡូវនេះ</span>
+              <ArrowRight className="w-4 h-4" />
+            </div>
+          </div>
+
+          {/* Card 4: Wheel */}
+          <div 
+            onClick={() => { setKhmerMode('wheel'); }}
+            className="group relative flex flex-col justify-between p-6 sm:p-7 rounded-3xl border border-violet-100 bg-gradient-to-br from-violet-50/50 via-white to-violet-50/10 hover:border-violet-300 hover:shadow-lg hover:shadow-violet-500/5 transition-all duration-300 cursor-pointer overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-violet-100/20 rounded-full blur-2xl transform translate-x-10 -translate-y-10 group-hover:bg-violet-100/40 transition-all duration-300"></div>
+            
+            <div className="space-y-4 relative">
+              <div className="w-12 h-12 rounded-2xl bg-violet-100 text-violet-600 flex items-center justify-center shadow-sm">
+                <Layers className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-[10px] font-extrabold text-violet-600 tracking-wider uppercase bg-violet-50 border border-violet-100 px-2.5 py-1 rounded-full">
+                  លេងដោយសេរី / ប្ដូរតាមចិត្ត
+                </span>
+                <h3 className="text-lg font-black text-gray-800 font-sans mt-3">
+                  ការបង្វិលថាសសំណាង
+                </h3>
+                <p className="text-xs text-gray-500 leading-relaxed mt-2.5">
+                  បង្វិលថាសសំណាងអក្សរ ឬស្រៈខ្មែរ ដើម្បីជ្រើសរើសដោយចៃដន្យសម្រាប់ការបង្កើតពាក្យ ឬប្រកួតប្រជែងជាក្រុមជាមួយមិត្តភក្តិ។
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                <span className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1 rounded-lg">
+                  🎡 ថាសវិលស្រៈ/ព្យញ្ជនៈ
+                </span>
+                <span className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1 rounded-lg">
+                  ⚙️ កែប្រែគំរូដោយខ្លួនឯង
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-6 flex items-center text-violet-700 font-black text-xs gap-1.5 group-hover:translate-x-1 transition-transform">
+              <span>ចូលលេងឥឡូវនេះ</span>
+              <ArrowRight className="w-4 h-4" />
+            </div>
+          </div>
+        </div>
+      ) : (khmerMode === 'riddle' || khmerMode === 'spelling') ? (
         /* Main Game Interface */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
           
@@ -371,19 +549,20 @@ export const KhmerGame: React.FC<KhmerGameProps> = ({
 
           </div>
         </div>
-      ) : (
-        /* CUSTOM SANDBOX MODE - ONLY Random Cards and Spinning Wheel */
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 flex-1 w-full mt-2 animate-fade-in">
-          {/* Card Selector Widget */}
-          <div className="h-full">
+      ) : khmerMode === 'cards' ? (
+        /* CUSTOM CARDS MODE - ONLY Random Cards */
+        <div className="flex justify-center flex-1 w-full max-w-2xl mx-auto mt-2 animate-fade-in">
+          <div className="w-full h-full">
             <RandomCards 
               templates={cardTemplates}
               onCardSelected={() => {}} 
             />
           </div>
-
-          {/* Spinning Wheel Widget */}
-          <div className="h-full">
+        </div>
+      ) : (
+        /* CUSTOM WHEEL MODE - ONLY Spinning Wheel */
+        <div className="flex justify-center flex-1 w-full max-w-2xl mx-auto mt-2 animate-fade-in">
+          <div className="w-full h-full">
             <SpinningWheel 
               templates={wheelTemplates}
               onSpinCompleted={() => {}} 

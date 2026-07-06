@@ -227,7 +227,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, onContinueAsG
             <GraduationCap className="w-8 h-8" />
           </div>
           <h2 className="text-2xl font-black text-gray-900 tracking-tight font-sans">
-            សាលាហ្វឹកហាត់ <span className="text-indigo-600">ចៃដន្យ</span>
+            ល្បែងសិក្សា <span className="text-indigo-600">ខ្មែរ</span>
           </h2>
           <p className="text-xs text-gray-400 font-medium mt-1">
             សូមចូលគណនីដើម្បីរក្សាទុកវឌ្ឍនភាពសិក្សា និងការកំណត់របស់អ្នក

@@ -4,7 +4,11 @@ import {
   Settings, Layers, Compass, BookOpen, AlertCircle, Plus, 
   Trash2, Save, RotateCcw, Check, Sparkles, HelpCircle, FileText
 } from 'lucide-react';
-import { CardTemplate, WheelTemplate, RiddleTemplate, SpellingTemplate } from '../data/initialTemplates';
+import { 
+  CardTemplate, WheelTemplate, RiddleTemplate, SpellingTemplate,
+  DEFAULT_CARD_TEMPLATES, DEFAULT_WHEEL_TEMPLATES, DEFAULT_RIDDLES, DEFAULT_SPELLINGS
+} from '../data/initialTemplates';
+import { saveGlobalTemplates } from '../lib/dbService';
 
 interface AdminDashboardProps {
   cardTemplates: CardTemplate[];
@@ -98,10 +102,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   // GLOBAL SAVE ACTION
-  const handleSaveAll = () => {
+  const handleSaveAll = async () => {
     setIsSaving(true);
-    setTimeout(() => {
-      // Commit drafts to parent app states
+    try {
+      // 1. Save to shared Firestore database
+      await saveGlobalTemplates({
+        cardTemplates: draftCards,
+        wheelTemplates: draftWheels,
+        riddles: draftRiddles,
+        spellings: draftSpellings
+      });
+
+      // 2. Commit drafts to parent app states
       setCardTemplates(draftCards);
       localStorage.setItem('custom_card_templates', JSON.stringify(draftCards));
 
@@ -114,9 +126,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setSpellings(draftSpellings);
       localStorage.setItem('custom_spellings', JSON.stringify(draftSpellings));
 
+      triggerNotification('success', 'បានរក្សាទុកការផ្លាស់ប្ដូរទាំងអស់ទៅកាន់ Firestore ជាជោគជ័យ! 💾✨');
+    } catch (err: any) {
+      console.error("Firestore save failed:", err);
+      // Even if Firestore save fails (e.g. offline), we still commit locally as an offline-first backup
+      setCardTemplates(draftCards);
+      localStorage.setItem('custom_card_templates', JSON.stringify(draftCards));
+
+      setWheelTemplates(draftWheels);
+      localStorage.setItem('custom_wheel_templates', JSON.stringify(draftWheels));
+
+      setRiddles(draftRiddles);
+      localStorage.setItem('custom_riddles', JSON.stringify(draftRiddles));
+
+      setSpellings(draftSpellings);
+      localStorage.setItem('custom_spellings', JSON.stringify(draftSpellings));
+
+      triggerNotification('error', 'បានរក្សាទុកក្នុងម៉ាស៊ីនបណ្ដោះអាសន្ន (រក្សាទុកក្នុង Firestore បរាជ័យ៖ ' + (err.message || 'បញ្ហាប្រព័ន្ធ') + ')');
+    } finally {
       setIsSaving(false);
-      triggerNotification('success', 'បានរក្សាទុកការផ្លាស់ប្ដូរទាំងអស់ដោយជោគជ័យ! 💾✨');
-    }, 600);
+    }
   };
 
   // CARD TEMPLATE ACTIONS
@@ -351,10 +380,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </button>
 
           <button
-            onClick={() => {
+            onClick={async () => {
               if (confirm('តើអ្នកពិតជាចង់កំណត់ទិន្នន័យទាំងអស់ទៅលំនាំដើមរបស់ប្រព័ន្ធឡើងវិញមែនទេ? រាល់ការកែប្រែទាំងអស់នឹងត្រូវបាត់បង់!')) {
-                onResetAll();
-                triggerNotification('success', 'បានកំណត់ទិន្នន័យគំរូទាំងអស់ទៅលំនាំដើមវិញរួចរាល់!');
+                try {
+                  setIsSaving(true);
+                  // 1. Reset in Firestore
+                  await saveGlobalTemplates({
+                    cardTemplates: DEFAULT_CARD_TEMPLATES,
+                    wheelTemplates: DEFAULT_WHEEL_TEMPLATES,
+                    riddles: DEFAULT_RIDDLES,
+                    spellings: DEFAULT_SPELLINGS
+                  });
+                  // 2. Reset locally
+                  onResetAll();
+                  triggerNotification('success', 'បានកំណត់ទិន្នន័យគំរូទាំងអស់ទៅលំនាំដើមក្នុង Firestore វិញរួចរាល់!');
+                } catch (err: any) {
+                  console.error("Failed to reset Firestore templates:", err);
+                  triggerNotification('error', 'ការកំណត់ឡើងវិញបរាជ័យ៖ ' + (err.message || 'បញ្ហាប្រព័ន្ធ'));
+                } finally {
+                  setIsSaving(false);
+                }
               }
             }}
             className="px-3.5 py-2.5 bg-rose-50 border border-rose-100 text-rose-700 hover:bg-rose-100 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"

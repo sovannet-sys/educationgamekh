@@ -1,6 +1,6 @@
 {
-  "name": "Math Practice & Randomizer",
-  "description": "An interactive math training application featuring customizable random cards and a random spinning wheel to practice math operations.",
+  "name": "ល្បែងសិក្សាខ្មែរ",
+  "description": "កម្មវិធីល្បែងសិក្សាបណ្ដុះបណ្ដាលបញ្ញា និងគណិតវិទ្យាសម្រាប់ខ្មែរ មានកាតចៃដន្យ ថាសវិល រកនឹកពាក្យ និងទាយប្រស្នា។",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

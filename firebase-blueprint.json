@@ -1,0 +1,39 @@
+{
+  "entities": {
+    "TemplateConfig": {
+      "title": "TemplateConfig",
+      "description": "Global configuration containing all card and wheel templates, riddles, and spelling games.",
+      "type": "object",
+      "properties": {
+        "cardTemplates": {
+          "type": "array",
+          "description": "List of customizable random card templates."
+        },
+        "wheelTemplates": {
+          "type": "array",
+          "description": "List of customizable spinning wheel templates."
+        },
+        "riddles": {
+          "type": "array",
+          "description": "List of Khmer riddles."
+        },
+        "spellings": {
+          "type": "array",
+          "description": "List of Khmer spelling games."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp."
+        }
+      },
+      "required": ["cardTemplates", "wheelTemplates"]
+    }
+  },
+  "firestore": {
+    "/templates/global": {
+      "schema": "TemplateConfig",
+      "description": "The single global document storing all templates so that all users can read and use them."
+    }
+  }
+}
