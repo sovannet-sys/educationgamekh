@@ -34,8 +34,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, onContinueAsG
 
   // Google Sign-In Fallback States
   const [showGoogleSim, setShowGoogleSim] = useState(false);
-  const [simEmail, setSimEmail] = useState('sovannetmeas.sm@gmail.com');
-  const [simName, setSimName] = useState('Sovannet Meas');
+  const [simEmail, setSimEmail] = useState('');
+  const [simName, setSimName] = useState('');
   const [simPassword, setSimPassword] = useState('');
   const [needSimPassword, setNeedSimPassword] = useState(false);
   const [simLoading, setSimLoading] = useState(false);
@@ -75,9 +75,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, onContinueAsG
       onSuccess();
     } catch (err: any) {
       console.warn("Google popup login failed, switching to secure dynamic fallback:", err);
-      // Setup default placeholder email using user's context email if available
-      setSimEmail('sovannetmeas.sm@gmail.com');
-      setSimName('Sovannet Meas');
+      // Let user type or choose their own Google email and name
+      setSimEmail('');
+      setSimName('');
       setNeedSimPassword(false);
       setSimPassword('');
       setShowGoogleSim(true);
