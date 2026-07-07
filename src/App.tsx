@@ -46,7 +46,7 @@ export default function App() {
   const [selectedWheelVal, setSelectedWheelVal] = useState<string>('');
   const [activeMainTab, setActiveMainTab] = useState<'math' | 'khmer' | 'admin'>('math');
   const [mathPracticeMode, setMathPracticeMode] = useState<'menu' | 'auto' | 'cards' | 'wheel' | 'dice' | 'snakes'>('menu');
-  const [khmerGameMode, setKhmerGameMode] = useState<'menu' | 'riddle' | 'spelling' | 'cards' | 'wheel'>('menu');
+  const [khmerGameMode, setKhmerGameMode] = useState<'menu' | 'riddle' | 'spelling' | 'cards' | 'wheel' | 'assembly'>('menu');
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const isAdmin = user?.email?.toLowerCase() === 'sovannetmeas.sm@gmail.com';

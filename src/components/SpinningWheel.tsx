@@ -129,8 +129,7 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
       // Prevent duplicate logging if they are already in history
       setLastWinners(prev => {
         if (prev[0] === combined) return prev;
-        const nv = [combined, ...prev].slice(0, 5);
-        return nv;
+        return [combined, ...prev];
       });
       if (onSpinCompleted) {
         onSpinCompleted(combined);
@@ -216,7 +215,7 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
       setIsSpinning(false);
 
       if (wheelMode === 'single') {
-        setLastWinners(prev => [selectedSector.value, ...prev.slice(0, 4)]);
+        setLastWinners(prev => [selectedSector.value, ...prev]);
         if (onSpinCompleted) {
           onSpinCompleted(selectedSector.value);
         }
@@ -789,7 +788,7 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
         <div className="w-full bg-gray-50/50 rounded-2xl p-4 border border-gray-100/50 flex flex-col items-center">
           <div className="flex justify-between items-center w-full mb-2 px-1">
             <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block">
-              ប្រវត្តិបង្វិល (៥ ដងចុងក្រោយ)
+              ប្រវត្តិនៃការបង្វិល
             </span>
             {lastWinners.length > 0 && (
               <button
