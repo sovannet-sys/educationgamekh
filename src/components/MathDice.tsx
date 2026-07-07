@@ -4,6 +4,7 @@ import {
   Dices, RotateCcw, Check, X, Flame, Award, Sparkles, HelpCircle, ArrowRight, ArrowLeft,
   Settings, Plus, Trash2
 } from 'lucide-react';
+import { audioSynth } from '../lib/audio';
 
 interface MathDiceProps {
   onBackToMenu: () => void;
@@ -345,6 +346,7 @@ const DICE_THEMES = [
 
   const rollDice = () => {
     if (isRolling) return;
+    audioSynth.playDiceRoll();
     setIsRolling(true);
     setUserAnswer('');
     setFeedback(null);

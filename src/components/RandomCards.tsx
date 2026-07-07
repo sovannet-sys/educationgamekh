@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { CardItem } from '../types';
 import { CardTemplate, DEFAULT_CARD_TEMPLATES } from '../data/initialTemplates';
+import { audioSynth } from '../lib/audio';
 
 interface RandomCardsProps {
   onCardSelected?: (value: string) => void;
@@ -104,6 +105,7 @@ export const RandomCards: React.FC<RandomCardsProps> = ({
 
   // Toggle Flip (Grid Mode)
   const handleToggleFlip = (id: string) => {
+    audioSynth.playClick(600, 0.08);
     setCards(
       cards.map(c => (c.id === id ? { ...c, isFlipped: !c.isFlipped } : c))
     );
@@ -111,11 +113,13 @@ export const RandomCards: React.FC<RandomCardsProps> = ({
 
   // Flip All
   const handleFlipAll = (flipped: boolean) => {
+    audioSynth.playCardShuffle();
     setCards(cards.map(c => ({ ...c, isFlipped: flipped })));
   };
 
   // Shuffle Cards (Grid Mode)
   const handleShuffle = () => {
+    audioSynth.playCardShuffle();
     const shuffled = [...cards].sort(() => Math.random() - 0.5);
     setCards(shuffled.map(c => ({ ...c, isFlipped: false })));
   };
@@ -123,6 +127,7 @@ export const RandomCards: React.FC<RandomCardsProps> = ({
   // Draw Card (Deck Mode)
   const handleDrawCard = () => {
     if (cards.length === 0) return;
+    audioSynth.playCardShuffle();
     setIsDrawing(true);
     setDrawnCard(null);
 
