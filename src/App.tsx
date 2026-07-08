@@ -157,67 +157,72 @@ export default function App() {
     <div className="w-full h-screen max-h-screen overflow-hidden bg-[#FAF9F6]" id="app-viewport-wrapper">
       <div className="w-full h-full max-h-full text-gray-800 font-sans flex flex-col justify-between overflow-hidden" id="app-container">
       {/* Top Navbar */}
-      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-4 sm:px-8">
-        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-tr from-indigo-600 to-violet-500 p-2.5 rounded-2xl shadow-md text-white">
-              <GraduationCap className="w-6 h-6" />
+      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-3 sm:py-4 sm:px-8">
+        <div className="max-w-7xl mx-auto flex flex-row items-center justify-between gap-2 sm:gap-4 w-full">
+          {/* Left Side: Logo & App Name */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <div className="bg-gradient-to-tr from-indigo-600 to-violet-500 p-2 sm:p-2.5 rounded-xl sm:rounded-2xl shadow-md text-white">
+              <GraduationCap className="w-5 h-5 sm:w-6 h-6" />
             </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight flex items-center gap-1.5 font-sans">
+            <div className="hidden xs:block">
+              <h1 className="text-sm sm:text-base md:text-xl font-black text-gray-900 tracking-tight flex items-center gap-1 font-sans">
                 ល្បែងសិក្សា <span className="text-indigo-600">ខ្មែរ</span>
               </h1>
-              <p className="text-xs text-gray-500 font-medium mt-0.5">
-                កម្មវិធីល្បែងសិក្សាបណ្ដុះបណ្ដាលបញ្ញា និងគណិតវិទ្យាសម្រាប់ខ្មែរ
+              <p className="hidden md:block text-[10px] text-gray-400 font-medium mt-0.5">
+                កម្មវិធីល្បែងសិក្សាបណ្ដុះបណ្ដាលបញ្ញា និងគណិតវិទ្យា
               </p>
             </div>
           </div>
 
-          {/* Main Navigation Segmented Control */}
-          <div className="flex bg-gray-100 p-1 rounded-2xl border border-gray-200/50 flex-wrap justify-center gap-1">
+          {/* Middle: Subject Selection Segmented Control */}
+          <div className="flex bg-gray-100 p-0.5 sm:p-1 rounded-xl sm:rounded-2xl border border-gray-200/50 gap-0.5 sm:gap-1 items-center justify-center flex-1 max-w-md mx-2 sm:mx-4">
             <button
               onClick={() => setActiveMainTab('math')}
-              className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer ${
+              className={`flex-1 flex items-center justify-center gap-1 sm:gap-2 px-2 py-1.5 sm:py-2.5 text-[10px] sm:text-xs md:text-sm font-bold rounded-lg sm:rounded-xl transition-all cursor-pointer whitespace-nowrap ${
                 activeMainTab === 'math'
                   ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-md shadow-indigo-100'
                   : 'text-gray-500 hover:text-gray-800'
               }`}
               id="btn-main-tab-math"
             >
-              <Calculator className="w-4.5 h-4.5" /> ផ្នែកគណិតវិទ្យា
+              <Calculator className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5" />
+              <span>គណិតវិទ្យា</span>
             </button>
             <button
               onClick={() => setActiveMainTab('khmer')}
-              className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer ${
+              className={`flex-1 flex items-center justify-center gap-1 sm:gap-2 px-2 py-1.5 sm:py-2.5 text-[10px] sm:text-xs md:text-sm font-bold rounded-lg sm:rounded-xl transition-all cursor-pointer whitespace-nowrap ${
                 activeMainTab === 'khmer'
                   ? 'bg-gradient-to-r from-violet-600 to-violet-700 text-white shadow-md shadow-violet-100'
                   : 'text-gray-500 hover:text-gray-800'
               }`}
               id="btn-main-tab-khmer"
             >
-              <BookOpen className="w-4.5 h-4.5" /> ផ្នែកភាសាខ្មែរ
+              <BookOpen className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5" />
+              <span>ភាសាខ្មែរ</span>
             </button>
             {isAdmin && (
               <button
                 onClick={() => setActiveMainTab('admin')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer ${
+                className={`flex items-center justify-center gap-1 sm:gap-2 px-2 py-1.5 sm:py-2.5 text-[10px] sm:text-xs md:text-sm font-bold rounded-lg sm:rounded-xl transition-all cursor-pointer whitespace-nowrap ${
                   activeMainTab === 'admin'
                     ? 'bg-gradient-to-r from-rose-600 to-rose-700 text-white shadow-md shadow-rose-100'
                     : 'text-gray-500 hover:text-gray-800'
                 }`}
                 id="btn-main-tab-admin"
               >
-                <Settings className="w-4.5 h-4.5 animate-spin-slow" /> គ្រប់គ្រងប្រព័ន្ធ (Admin)
+                <Settings className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5" />
+                <span className="hidden sm:inline">គ្រប់គ្រង</span>
+                <span className="inline sm:hidden">Admin</span>
               </button>
             )}
           </div>
 
-          {/* User Profile / Auth State */}
-          <div className="flex items-center gap-3 relative" id="user-profile-menu">
+          {/* Right Side: User Profile / Auth State */}
+          <div className="flex items-center gap-2 sm:gap-3 relative shrink-0" id="user-profile-menu">
             {dbSyncing && (
-              <span className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 border border-indigo-100 rounded-xl text-[10px] font-bold text-indigo-600 animate-pulse">
-                <Loader2 className="w-3 h-3 animate-spin text-indigo-500" />
-                ទិន្នន័យពី Cloud...
+              <span className="hidden lg:flex items-center gap-1 px-2 py-1 bg-indigo-50 border border-indigo-100 rounded-lg text-[9px] font-bold text-indigo-600 animate-pulse">
+                <Loader2 className="w-2.5 h-2.5 animate-spin text-indigo-500" />
+                Sync...
               </span>
             )}
             
