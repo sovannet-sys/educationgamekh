@@ -92,6 +92,7 @@ interface DiceAnimConfig {
 }
 
 export const MathDice: React.FC<MathDiceProps> = ({ onBackToMenu, isAdmin }) => {
+  const [mobileActiveView, setMobileActiveView] = useState<'info' | 'game'>('game');
   const [diceCount, setDiceCount] = useState<1 | 2 | 3>(2);
   const [diceValues, setDiceValues] = useState<number[]>([3, 5]);
   const [operator, setOperator] = useState<'+' | '-' | '×'>('+');
@@ -693,9 +694,36 @@ const DICE_THEMES = [
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 w-full mt-2 py-4 animate-fade-in">
-      {/* Controls & Options Panel (Left Side - 4 Cols) */}
-      <div className="lg:col-span-4 border-r border-gray-100 pr-0 lg:pr-6 flex flex-col justify-between">
+    <div className="flex flex-col flex-1" id="math-dice-wrapper">
+      {/* Mobile page switcher */}
+      <div className="flex bg-gray-100 p-1 rounded-2xl border border-gray-200/50 gap-1 items-center justify-center w-full lg:hidden mb-4 shadow-2xs">
+        <button
+          type="button"
+          onClick={() => { audioSynth.playClick(600, 0.08); setMobileActiveView('info'); }}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+            mobileActiveView === 'info'
+              ? 'bg-rose-500 text-white shadow-sm font-black'
+              : 'text-gray-500 hover:text-gray-800'
+          }`}
+        >
+          ← កែប្រែឡុកឡាក់ និងពិន្ទុ (Settings & Score)
+        </button>
+        <button
+          type="button"
+          onClick={() => { audioSynth.playClick(600, 0.08); setMobileActiveView('game'); }}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+            mobileActiveView === 'game'
+              ? 'bg-rose-500 text-white shadow-sm font-black'
+              : 'text-gray-500 hover:text-gray-800'
+          }`}
+        >
+          បោះឡុកឡាក់ឆ្លើយសំណួរ (Play Dice) →
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 w-full mt-2 py-4 animate-fade-in" id="math-dice-main-grid">
+        {/* Controls & Options Panel (Left Side - 4 Cols) */}
+        <div className={`lg:col-span-4 border-r border-gray-100 pr-0 lg:pr-6 flex flex-col justify-between ${mobileActiveView === 'info' ? 'flex' : 'hidden lg:flex'}`} id="math-dice-left-panel">
         <div className="space-y-6">
           {/* Game Selection Dropdown & Admin Entry */}
           <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 space-y-4">
@@ -943,7 +971,7 @@ const DICE_THEMES = [
         {/* Action button to roll */}
         <div className="pt-6">
           <button
-            onClick={rollDice}
+            onClick={() => { rollDice(); setMobileActiveView('game'); }}
             disabled={isRolling}
             className="w-full py-3.5 px-4 bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-black rounded-2xl transition-all shadow-md shadow-rose-500/10 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
           >
@@ -954,7 +982,7 @@ const DICE_THEMES = [
       </div>
 
       {/* Main Interactive Stage (Right Side - 8 Cols) */}
-      <div className="lg:col-span-8 flex flex-col justify-between min-h-[400px]">
+      <div className={`lg:col-span-8 flex flex-col justify-between min-h-[400px] ${mobileActiveView === 'game' ? 'flex' : 'hidden lg:flex'}`} id="math-dice-right-panel">
         {/* Active Game Title Display */}
         {selectedGameName && (
           <div className="flex items-center gap-2 mb-4 bg-gradient-to-r from-rose-50 to-rose-100/30 border border-rose-100 p-3 px-4 rounded-2xl">
@@ -1189,6 +1217,7 @@ const DICE_THEMES = [
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 };

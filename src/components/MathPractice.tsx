@@ -28,6 +28,7 @@ export const MathPractice: React.FC<MathPracticeProps> = ({
 }) => {
   
   // Auto Mode States
+  const [mobileActiveView, setMobileActiveView] = useState<'info' | 'game'>('game');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
   const [allowedOps, setAllowedOps] = useState<('+' | '-' | '×' | '÷')[]>(['+', '-']);
   const [currentChallenge, setCurrentChallenge] = useState<MathChallenge | null>(null);
@@ -432,9 +433,36 @@ export const MathPractice: React.FC<MathPracticeProps> = ({
         </div>
       ) : practiceMode === 'auto' ? (
         /* AUTOMATIC QUIZ GENERATOR */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
-          {/* Controls - 4 cols */}
-          <div className="lg:col-span-4 border-r border-gray-50 pr-0 lg:pr-6 flex flex-col justify-between">
+        <div className="flex flex-col flex-1" id="math-practice-auto-wrapper">
+          {/* Mobile page switcher */}
+          <div className="flex bg-gray-100 p-1 rounded-2xl border border-gray-200/50 gap-1 items-center justify-center w-full lg:hidden mb-4 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setMobileActiveView('info')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                mobileActiveView === 'info'
+                  ? 'bg-amber-500 text-white shadow-sm font-black'
+                  : 'text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              ← កែប្រែប្រមាណវិធី និងពិន្ទុ (Settings & Score)
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileActiveView('game')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                mobileActiveView === 'game'
+                  ? 'bg-amber-500 text-white shadow-sm font-black'
+                  : 'text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              ចូលដោះស្រាយលំហាត់ (Solve Quiz) →
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1" id="math-practice-main-grid">
+            {/* Controls - 4 cols */}
+            <div className={`lg:col-span-4 border-r border-gray-50 pr-0 lg:pr-6 flex flex-col justify-between ${mobileActiveView === 'info' ? 'flex' : 'hidden lg:flex'}`} id="math-practice-left-panel">
             <div className="space-y-5">
               {/* Difficulty Selector */}
               <div>
@@ -530,8 +558,8 @@ export const MathPractice: React.FC<MathPracticeProps> = ({
             </div>
           </div>
 
-          {/* Equation & Input - 8 cols */}
-          <div className="lg:col-span-8 flex flex-col justify-between bg-gray-50/50 rounded-2xl p-6 min-h-[250px]">
+            {/* Equation & Input - 8 cols */}
+            <div className={`lg:col-span-8 flex flex-col justify-between bg-gray-50/50 rounded-2xl p-6 min-h-[250px] ${mobileActiveView === 'game' ? 'flex' : 'hidden lg:flex'}`} id="math-practice-right-panel">
             {currentChallenge ? (
               <div className="flex-1 flex flex-col justify-between">
                 {/* Equation Card */}
@@ -622,6 +650,7 @@ export const MathPractice: React.FC<MathPracticeProps> = ({
             )}
           </div>
         </div>
+      </div>
       ) : practiceMode === 'cards' ? (
         /* CUSTOM CARDS MODE - ONLY Random Cards */
         <div className="flex justify-center flex-1 w-full max-w-2xl mx-auto mt-2 animate-fade-in">

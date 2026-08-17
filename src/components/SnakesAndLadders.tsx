@@ -130,6 +130,7 @@ export const SnakesAndLadders: React.FC<SnakesAndLaddersProps> = ({ onBackToMenu
   const [isSoundEnabled, setIsSoundEnabled] = useState(true);
 
   // Active Game Play States
+  const [mobileView, setMobileView] = useState<'board' | 'controls'>('board');
   const [isConfigured, setIsConfigured] = useState(false);
   const [players, setPlayers] = useState<Player[]>([]);
   const [currentPlayerIdx, setCurrentPlayerIdx] = useState(0);
@@ -681,10 +682,37 @@ export const SnakesAndLadders: React.FC<SnakesAndLaddersProps> = ({ onBackToMenu
         </div>
       ) : (
         /* ACTIVE BOARD GAME INTERFACE */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 w-full" id="snakes-ladders-board-screen">
-          
-          {/* LEFT/CENTER: THE 10x10 BOARD - 7 COLS */}
-          <div className="lg:col-span-7 flex flex-col justify-center items-center">
+        <div className="flex flex-col flex-1 w-full" id="snakes-ladders-board-wrapper">
+          {/* Mobile view page switcher */}
+          <div className="flex bg-gray-100 p-1 rounded-2xl border border-gray-200/50 gap-1 items-center justify-center w-full lg:hidden mb-4 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => { playSynthSound('move', isSoundEnabled); setMobileView('board'); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                mobileView === 'board'
+                  ? 'bg-rose-500 text-white shadow-sm font-black'
+                  : 'text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              ← បង្ហាញក្តារល្បែង (Board)
+            </button>
+            <button
+              type="button"
+              onClick={() => { playSynthSound('move', isSoundEnabled); setMobileView('controls'); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                mobileView === 'controls'
+                  ? 'bg-rose-500 text-white shadow-sm font-black'
+                  : 'text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              បង្ហាញការបញ្ជា និងពិន្ទុ (Controls) →
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 w-full" id="snakes-ladders-board-screen">
+            
+            {/* LEFT/CENTER: THE 10x10 BOARD - 7 COLS */}
+            <div className={`lg:col-span-7 flex flex-col justify-center items-center ${mobileView === 'board' ? 'flex' : 'hidden lg:flex'}`}>
             
             {/* Legend & Guide bar */}
             <div className="w-full flex justify-between items-center bg-slate-50 border border-slate-100 rounded-2xl p-2.5 px-4 mb-4 text-[10px] text-gray-500 font-bold gap-2">
@@ -778,8 +806,8 @@ export const SnakesAndLadders: React.FC<SnakesAndLaddersProps> = ({ onBackToMenu
             </div>
           </div>
 
-          {/* RIGHT: CONTROLS & LOGS PANEL - 5 COLS */}
-          <div className="lg:col-span-5 flex flex-col justify-between border-t lg:border-t-0 lg:border-l border-gray-100 pt-6 lg:pt-0 lg:pl-6 text-left space-y-6">
+            {/* RIGHT: CONTROLS & LOGS PANEL - 5 COLS */}
+            <div className={`lg:col-span-5 flex flex-col justify-between border-t lg:border-t-0 lg:border-l border-gray-100 pt-6 lg:pt-0 lg:pl-6 text-left space-y-6 ${mobileView === 'controls' ? 'flex' : 'hidden lg:flex'}`}>
             
             {/* Status Information / Whose turn is it */}
             <div className="space-y-4">
@@ -894,8 +922,8 @@ export const SnakesAndLadders: React.FC<SnakesAndLaddersProps> = ({ onBackToMenu
                 ))}
               </div>
             </div>
-
           </div>
+        </div>
         </div>
       )}
 

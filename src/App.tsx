@@ -20,17 +20,27 @@ import { testConnection, fetchGlobalTemplates, saveGlobalTemplates } from './lib
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [isGuest, setIsGuest] = useState(false);
+  const [isGuest, setIsGuest] = useState(true); // Default to true to temporarily bypass the login wall
 
   useEffect(() => {
+    // Safety timeout: If Firebase auth listener is slow or fails to respond within 1.5 seconds, 
+    // we bypass the loading screen and load the app as a guest.
+    const timeoutId = setTimeout(() => {
+      setAuthLoading(false);
+    }, 1500);
+
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      clearTimeout(timeoutId);
       setUser(currentUser);
       setAuthLoading(false);
       if (currentUser) {
         setIsGuest(false);
       }
     });
-    return () => unsubscribe();
+    return () => {
+      clearTimeout(timeoutId);
+      unsubscribe();
+    };
   }, []);
 
   const handleSignOut = async () => {
@@ -46,7 +56,7 @@ export default function App() {
   const [selectedWheelVal, setSelectedWheelVal] = useState<string>('');
   const [activeMainTab, setActiveMainTab] = useState<'math' | 'khmer' | 'admin'>('math');
   const [mathPracticeMode, setMathPracticeMode] = useState<'menu' | 'auto' | 'cards' | 'wheel' | 'dice' | 'snakes'>('menu');
-  const [khmerGameMode, setKhmerGameMode] = useState<'menu' | 'riddle' | 'spelling' | 'cards' | 'wheel' | 'assembly'>('menu');
+  const [khmerGameMode, setKhmerGameMode] = useState<'menu' | 'riddle' | 'spelling' | 'cards' | 'wheel' | 'assembly' | 'daily'>('menu');
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const isAdmin = user?.email?.toLowerCase() === 'sovannetmeas.sm@gmail.com';
@@ -302,16 +312,9 @@ export default function App() {
                           <LogOut className="w-4 h-4" /> ចាកចេញ (Sign Out)
                         </button>
                       ) : (
-                        <button
-                          onClick={() => {
-                            setIsUserMenuOpen(false);
-                            setIsGuest(false);
-                          }}
-                          className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 hover:text-indigo-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
-                          id="btn-dropdown-signin"
-                        >
-                          <UserIcon className="w-4 h-4" /> ចូលគណនីវិញ
-                        </button>
+                        <div className="text-center p-2.5 bg-gray-50 border border-gray-100 rounded-xl text-[10px] sm:text-xs text-gray-400 font-bold leading-relaxed">
+                          មុខងារចូលគណនីត្រូវបានបិទបណ្ដោះអាសន្ន។ អ្នកកំពុងប្រើប្រាស់របៀបភ្ញៀវ!
+                        </div>
                       )}
                     </div>
                   </>

@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Plus, Trash2, RotateCw, Play, Sparkles, AlertCircle, HelpCircle,
-  Hash, Calculator, Compass, Layers, Check, Info, Dices
+  Hash, Calculator, Compass, Layers, Check, Info, Dices, Settings, X
 } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import { WheelSector } from '../types';
 import { WheelTemplate, DEFAULT_WHEEL_TEMPLATES } from '../data/initialTemplates';
 import { audioSynth } from '../lib/audio';
@@ -67,6 +68,44 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
 
   // Winners History List
   const [lastWinners, setLastWinners] = useState<string[]>([]);
+
+  // State to control whether to remove sector on win
+  const [removeOnWin, setRemoveOnWin] = useState(true);
+
+  // Settings Panel open/close state
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Reset wheels to initial state based on templates or custom values
+  const handleResetWheel = () => {
+    setWinner(null);
+    setWinner2(null);
+    
+    // Reset Wheel 1
+    if (selectedTemplateIndex !== 'custom') {
+      const idx = parseInt(selectedTemplateIndex, 10);
+      if (templates[idx]) {
+        handleApplyTemplate(templates[idx].values);
+      }
+    } else if (bulkInput.trim()) {
+      handleApplyTemplate(bulkInput);
+    } else {
+      const defaultVals = templates[0]?.values || '+, -, ×, ÷';
+      handleApplyTemplate(defaultVals);
+    }
+
+    // Reset Wheel 2
+    if (selectedTemplateIndex2 !== 'custom') {
+      const idx = parseInt(selectedTemplateIndex2, 10);
+      if (templates[idx]) {
+        handleApplyTemplate2(templates[idx].values);
+      }
+    } else if (bulkInput2.trim()) {
+      handleApplyTemplate2(bulkInput2);
+    } else {
+      const defaultVals = templates[2]?.values || '1, 2, 3, 4, 5, 6, 7, 8';
+      handleApplyTemplate2(defaultVals);
+    }
+  };
 
   // Apply template for Wheel 1
   const handleApplyTemplate = (templateValues: string) => {
@@ -182,6 +221,16 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
     setLastWinners([]);
   };
 
+  // Trigger beautiful theme-matching confetti celebration
+  const triggerCelebration = () => {
+    confetti({
+      particleCount: 120,
+      spread: 80,
+      origin: { y: 0.6 },
+      colors: ['#f43f5e', '#06b6d4', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#3b82f6', '#f97316']
+    });
+  };
+
   // Spin Wheel 1
   const handleSpin1 = () => {
     if (isSpinning || sectors.length === 0) return;
@@ -213,12 +262,17 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
 
       setWinner(selectedSector);
       setIsSpinning(false);
+      triggerCelebration();
 
       if (wheelMode === 'single') {
         setLastWinners(prev => [selectedSector.value, ...prev]);
         if (onSpinCompleted) {
           onSpinCompleted(selectedSector.value);
         }
+      }
+
+      if (removeOnWin && selectedSector) {
+        setSectors(prev => prev.filter(s => s.id !== selectedSector.id));
       }
     }, spinDuration * 1000);
   };
@@ -254,6 +308,11 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
 
       setWinner2(selectedSector);
       setIsSpinning2(false);
+      triggerCelebration();
+
+      if (removeOnWin && selectedSector) {
+        setSectors2(prev => prev.filter(s => s.id !== selectedSector.id));
+      }
     }, spinDuration * 1000);
   };
 
@@ -282,7 +341,7 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
           key={sector.id} 
           className="select-none"
           animate={{
-            scale: isWinner ? 1.15 : 1,
+            scale: 1,
           }}
           transition={{ type: "spring", stiffness: 300, damping: 15 }}
           style={{ 
@@ -297,15 +356,15 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
             cy={cy}
             r={radius}
             fill={sector.color}
-            stroke={isWinner ? "#000000" : "#ffffff"}
-            strokeWidth={isWinner ? "1.2" : "0.8"}
+            stroke="#ffffff"
+            strokeWidth="0.8"
             className="cursor-pointer"
           />
           <text
             x={cx}
             y={cy}
             fill="#ffffff"
-            fontSize={isWinner ? "9px" : "6px"}
+            fontSize={isWinner ? "7.5px" : "6px"}
             fontWeight="bold"
             textAnchor="middle"
             dominantBaseline="middle"
@@ -352,9 +411,8 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
       const ty = cy + textDist * Math.sin(midRad);
 
       const isWinner = !isCurrentSpinning && currentWinner && currentWinner.id === sector.id;
-      const offsetDistance = isWinner ? 7.5 : 0; // Shift the sector out slightly
-      const offsetX = offsetDistance * Math.cos(midRad);
-      const offsetY = offsetDistance * Math.sin(midRad);
+      const offsetX = 0;
+      const offsetY = 0;
 
       return (
         <motion.g 
@@ -363,7 +421,7 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
           animate={{
             x: offsetX,
             y: offsetY,
-            scale: isWinner ? 1.12 : 1,
+            scale: 1,
           }}
           transition={{ type: "spring", stiffness: 350, damping: 14 }}
           style={{ 
@@ -377,8 +435,8 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
           <path
             d={pathData}
             fill={sector.color}
-            stroke={isWinner ? "#111827" : "#ffffff"}
-            strokeWidth={isWinner ? "1.4" : "0.8"}
+            stroke="#ffffff"
+            strokeWidth="0.8"
             className="transition-colors duration-150 cursor-pointer"
           />
           {/* Value labels */}
@@ -446,152 +504,6 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
           </button>
         </div>
       </div>
-
-      {/* Template Selection Area */}
-      {wheelMode === 'single' ? (
-        /* SINGLE WHEEL TEMPLATE SELECTION */
-        <div className="w-full bg-white p-4 sm:p-5 rounded-2xl border border-gray-100 shadow-xs mb-4 sm:mb-6">
-          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-500 animate-pulse" /> ជ្រើសរើស ឬបង្កើតគំរូថាសបង្វិល
-          </label>
-          <select
-            value={selectedTemplateIndex}
-            onChange={handleTemplateDropdownChange}
-            className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 hover:border-emerald-200 rounded-xl text-gray-700 text-xs sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 focus:bg-white transition-all cursor-pointer"
-            id="wheel-template-select"
-          >
-            {templates.map((tpl, idx) => (
-              <option key={idx} value={idx.toString()}>
-                {tpl.name}
-              </option>
-            ))}
-            <option value="custom">✍️ បញ្ចូលដោយដៃ (កំណត់ផ្ទាល់ខ្លួន)</option>
-          </select>
-
-          {/* Selected values hint - visible if not custom */}
-          {selectedTemplateIndex !== 'custom' && templates[parseInt(selectedTemplateIndex, 10)] && (
-            <p className="text-[11px] text-gray-400 mt-2 font-semibold flex items-center gap-1">
-              <Info className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-              តម្លៃក្នុងគំរូ៖ <span className="font-mono bg-gray-50 px-1.5 py-0.5 rounded text-gray-600 truncate">{templates[parseInt(selectedTemplateIndex, 10)].values}</span>
-            </p>
-          )}
-
-          {/* Custom Input shown only when "custom" is selected */}
-          {selectedTemplateIndex === 'custom' && (
-            <motion.div 
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-3 mt-3 bg-emerald-50/30 p-3.5 rounded-2xl border border-emerald-100/50"
-            >
-              <div className="flex justify-between items-center">
-                <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
-                  <Info className="w-3.5 h-3.5" /> បញ្ចូលតម្លៃដោយផ្ទាល់៖
-                </span>
-              </div>
-              <textarea
-                rows={2}
-                placeholder="ឧ. +, -, ×, ÷ (បំបែកដោយសញ្ញាក្បៀស)"
-                value={bulkInput}
-                onChange={(e) => setBulkInput(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-700 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all resize-none font-semibold font-mono"
-                id="wheel-bulk-textarea"
-              />
-              <button
-                onClick={handleCustomApply}
-                className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md hover:shadow-emerald-50 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                id="wheel-bulk-submit"
-              >
-                <Check className="w-4 h-4" /> អនុវត្តតម្លៃដែលបានបញ្ចូល
-              </button>
-            </motion.div>
-          )}
-        </div>
-      ) : (
-        /* DUAL WHEELS TEMPLATE SELECTION (Two Column Grid) */
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-gray-100 shadow-xs mb-4 sm:mb-6">
-          {/* Wheel 1 Setup */}
-          <div className="border border-slate-100 p-3 rounded-xl bg-slate-50/50">
-            <label className="text-[11px] font-extrabold text-emerald-600 uppercase tracking-wider block mb-1.5 flex items-center gap-1">
-              🎯 ថាសបង្វិលទី ១ (Wheel 1)
-            </label>
-            <select
-              value={selectedTemplateIndex}
-              onChange={handleTemplateDropdownChange}
-              className="w-full px-3 py-2 bg-white border border-gray-200 hover:border-emerald-200 rounded-xl text-gray-700 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer mb-2"
-            >
-              {templates.map((tpl, idx) => (
-                <option key={idx} value={idx.toString()}>
-                  {tpl.name}
-                </option>
-              ))}
-              <option value="custom">✍️ កំណត់ផ្ទាល់ខ្លួន</option>
-            </select>
-
-            {selectedTemplateIndex === 'custom' ? (
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  placeholder="ឧ. A, B, C (បំបែកដោយសញ្ញាក្បៀស)"
-                  value={bulkInput}
-                  onChange={(e) => setBulkInput(e.target.value)}
-                  className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-mono font-semibold"
-                />
-                <button
-                  onClick={handleCustomApply}
-                  className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold"
-                >
-                  អនុវត្តតម្លៃទី១
-                </button>
-              </div>
-            ) : (
-              <p className="text-[10px] text-gray-400 font-mono truncate">
-                {templates[parseInt(selectedTemplateIndex, 10)]?.values}
-              </p>
-            )}
-          </div>
-
-          {/* Wheel 2 Setup */}
-          <div className="border border-slate-100 p-3 rounded-xl bg-slate-50/50">
-            <label className="text-[11px] font-extrabold text-blue-600 uppercase tracking-wider block mb-1.5 flex items-center gap-1">
-              🔮 ថាសបង្វិលទី ២ (Wheel 2)
-            </label>
-            <select
-              value={selectedTemplateIndex2}
-              onChange={handleTemplateDropdownChange2}
-              className="w-full px-3 py-2 bg-white border border-gray-200 hover:border-blue-200 rounded-xl text-gray-700 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer mb-2"
-            >
-              {templates.map((tpl, idx) => (
-                <option key={idx} value={idx.toString()}>
-                  {tpl.name}
-                </option>
-              ))}
-              <option value="custom">✍️ កំណត់ផ្ទាល់ខ្លួន</option>
-            </select>
-
-            {selectedTemplateIndex2 === 'custom' ? (
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  placeholder="ឧ. 1, 2, 3 (បំបែកដោយសញ្ញាក្បៀស)"
-                  value={bulkInput2}
-                  onChange={(e) => setBulkInput2(e.target.value)}
-                  className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-mono font-semibold"
-                />
-                <button
-                  onClick={handleCustomApply2}
-                  className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold"
-                >
-                  អនុវត្តតម្លៃទី២
-                </button>
-              </div>
-            ) : (
-              <p className="text-[10px] text-gray-400 font-mono truncate">
-                {templates[parseInt(selectedTemplateIndex2, 10)]?.values}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Wheels Interaction Area */}
       <div className="flex flex-col items-center justify-center w-full mx-auto flex-1 gap-6">
@@ -821,6 +733,236 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
             </div>
           )}
         </div>
+      </div>
+
+      {/* Settings Floating Action Button and Panel */}
+      <div className="fixed bottom-24 right-6 z-50 flex flex-col items-end" id="spinning-wheel-settings-fab-container">
+        <AnimatePresence>
+          {isSettingsOpen && (
+            <>
+              {/* Backdrop / Overlay to dismiss */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.3 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsSettingsOpen(false)}
+                className="fixed inset-0 bg-slate-900/40 z-40 cursor-pointer backdrop-blur-xs"
+              />
+              
+              {/* Settings Panel */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                transition={{ type: "spring", duration: 0.35, bounce: 0.1 }}
+                className="fixed bottom-40 right-6 z-50 w-[calc(100vw-3rem)] sm:w-[400px] max-h-[75vh] overflow-y-auto bg-white rounded-3xl border border-gray-100 shadow-2xl p-5 flex flex-col gap-4 text-left"
+              >
+                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Settings className="w-4.5 h-4.5 text-emerald-600 animate-spin-slow" />
+                    <span className="text-sm font-black text-gray-800">ការកំណត់ថាសបង្វិល</span>
+                  </div>
+                  <button
+                    onClick={() => setIsSettingsOpen(false)}
+                    className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-4.5 h-4.5" />
+                  </button>
+                </div>
+
+                {/* Remove slice on win section */}
+                <div className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-100/50 flex flex-col gap-3">
+                  <label className="inline-flex items-center gap-3 cursor-pointer select-none py-1" id="label-remove-on-win">
+                    <input
+                      type="checkbox"
+                      checked={removeOnWin}
+                      onChange={(e) => setRemoveOnWin(e.target.checked)}
+                      className="w-4.5 h-4.5 rounded text-emerald-600 border-gray-300 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
+                      id="checkbox-remove-on-win"
+                    />
+                    <span className="text-xs font-black text-gray-700">
+                      ដកចំណែកដែលបង្វិលចំចេញពីថាស (Remove on win)
+                    </span>
+                  </label>
+                  <div className="h-[1px] bg-slate-200/50" />
+                  <button
+                    onClick={() => {
+                      handleResetWheel();
+                      setIsSettingsOpen(false);
+                    }}
+                    className="w-full py-2 bg-white hover:bg-gray-50 text-gray-700 text-xs font-black rounded-xl border border-gray-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                    id="btn-reset-wheel-sectors"
+                  >
+                    <RotateCw className="w-3.5 h-3.5 text-gray-500" /> កំណត់ថាសឡើងវិញ (Reset Wheel)
+                  </button>
+                </div>
+
+                {/* Templates Selection section */}
+                <div className="flex-1 overflow-y-auto">
+                  {wheelMode === 'single' ? (
+                    /* SINGLE WHEEL TEMPLATE SELECTION */
+                    <div className="w-full flex flex-col gap-3">
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-500 animate-pulse" /> ជ្រើសរើស ឬបង្កើតគំរូថាសបង្វិល
+                      </label>
+                      <select
+                        value={selectedTemplateIndex}
+                        onChange={handleTemplateDropdownChange}
+                        className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 hover:border-emerald-200 rounded-xl text-gray-700 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 focus:bg-white transition-all cursor-pointer"
+                        id="wheel-template-select"
+                      >
+                        {templates.map((tpl, idx) => (
+                          <option key={idx} value={idx.toString()}>
+                            {tpl.name}
+                          </option>
+                        ))}
+                        <option value="custom">✍️ បញ្ចូលដោយដៃ (កំណត់ផ្ទាល់ខ្លួន)</option>
+                      </select>
+
+                      {/* Selected values hint - visible if not custom */}
+                      {selectedTemplateIndex !== 'custom' && templates[parseInt(selectedTemplateIndex, 10)] && (
+                        <p className="text-[11px] text-gray-400 font-semibold flex items-center gap-1 flex-wrap">
+                          <Info className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                          តម្លៃក្នុងគំរូ៖ <span className="font-mono bg-gray-50 px-1.5 py-0.5 rounded text-gray-600 truncate max-w-[240px]">{templates[parseInt(selectedTemplateIndex, 10)].values}</span>
+                        </p>
+                      )}
+
+                      {/* Custom Input shown only when "custom" is selected */}
+                      {selectedTemplateIndex === 'custom' && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="space-y-3 bg-emerald-50/30 p-3 rounded-2xl border border-emerald-100/50"
+                        >
+                          <div className="flex justify-between items-center">
+                            <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+                              <Info className="w-3.5 h-3.5" /> បញ្ចូលតម្លៃដោយផ្ទាល់៖
+                            </span>
+                          </div>
+                          <textarea
+                            rows={2}
+                            placeholder="ឧ. +, -, ×, ÷ (បំបែកដោយសញ្ញាក្បៀស)"
+                            value={bulkInput}
+                            onChange={(e) => setBulkInput(e.target.value)}
+                            className="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all resize-none font-semibold font-mono"
+                            id="wheel-bulk-textarea"
+                          />
+                          <button
+                            onClick={handleCustomApply}
+                            className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md hover:shadow-emerald-50 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                            id="wheel-bulk-submit"
+                          >
+                            <Check className="w-4 h-4" /> អនុវត្តតម្លៃដែលបានបញ្ចូល
+                          </button>
+                        </motion.div>
+                      )}
+                    </div>
+                  ) : (
+                    /* DUAL WHEELS TEMPLATE SELECTION (Two Column Grid) */
+                    <div className="grid grid-cols-1 gap-4">
+                      {/* Wheel 1 Setup */}
+                      <div className="border border-slate-100 p-3 rounded-xl bg-slate-50/50">
+                        <label className="text-[11px] font-extrabold text-emerald-600 uppercase tracking-wider block mb-1.5 flex items-center gap-1">
+                          🎯 ថាសបង្វិលទី ១ (Wheel 1)
+                        </label>
+                        <select
+                          value={selectedTemplateIndex}
+                          onChange={handleTemplateDropdownChange}
+                          className="w-full px-3 py-2 bg-white border border-gray-200 hover:border-emerald-200 rounded-xl text-gray-700 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer mb-2"
+                        >
+                          {templates.map((tpl, idx) => (
+                            <option key={idx} value={idx.toString()}>
+                              {tpl.name}
+                            </option>
+                          ))}
+                          <option value="custom">✍️ កំណត់ផ្ទាល់ខ្លួន</option>
+                        </select>
+
+                        {selectedTemplateIndex === 'custom' ? (
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              placeholder="ឧ. A, B, C (បំបែកដោយសញ្ញាក្បៀស)"
+                              value={bulkInput}
+                              onChange={(e) => setBulkInput(e.target.value)}
+                              className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-mono font-semibold"
+                            />
+                            <button
+                              onClick={handleCustomApply}
+                              className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold"
+                            >
+                              អនុវត្តតម្លៃទី១
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="text-[10px] text-gray-400 font-mono truncate">
+                            {templates[parseInt(selectedTemplateIndex, 10)]?.values}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Wheel 2 Setup */}
+                      <div className="border border-slate-100 p-3 rounded-xl bg-slate-50/50">
+                        <label className="text-[11px] font-extrabold text-blue-600 uppercase tracking-wider block mb-1.5 flex items-center gap-1">
+                          🔮 ថាសបង្វិលទី ២ (Wheel 2)
+                        </label>
+                        <select
+                          value={selectedTemplateIndex2}
+                          onChange={handleTemplateDropdownChange2}
+                          className="w-full px-3 py-2 bg-white border border-gray-200 hover:border-blue-200 rounded-xl text-gray-700 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer mb-2"
+                        >
+                          {templates.map((tpl, idx) => (
+                            <option key={idx} value={idx.toString()}>
+                              {tpl.name}
+                            </option>
+                          ))}
+                          <option value="custom">✍️ កំណត់ផ្ទាល់ខ្លួន</option>
+                        </select>
+
+                        {selectedTemplateIndex2 === 'custom' ? (
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              placeholder="ឧ. 1, 2, 3 (បំបែកដោយសញ្ញាក្បៀស)"
+                              value={bulkInput2}
+                              onChange={(e) => setBulkInput2(e.target.value)}
+                              className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-mono font-semibold"
+                            />
+                            <button
+                              onClick={handleCustomApply2}
+                              className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold"
+                            >
+                              អនុវត្តតម្លៃទី២
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="text-[10px] text-gray-400 font-mono truncate">
+                            {templates[parseInt(selectedTemplateIndex2, 10)]?.values}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* FAB Trigger Button */}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+          className="w-14 h-14 bg-gradient-to-tr from-emerald-600 to-emerald-500 text-white rounded-full flex items-center justify-center shadow-xl hover:shadow-emerald-200/50 cursor-pointer border border-emerald-400/20"
+          id="btn-floating-settings"
+        >
+          {isSettingsOpen ? (
+            <X className="w-6 h-6" />
+          ) : (
+            <Settings className="w-6 h-6" />
+          )}
+        </motion.button>
       </div>
     </div>
   );
