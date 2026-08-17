@@ -15,7 +15,7 @@ import {
   CardTemplate, WheelTemplate, RiddleTemplate, SpellingTemplate,
   DEFAULT_CARD_TEMPLATES, DEFAULT_WHEEL_TEMPLATES, DEFAULT_RIDDLES, DEFAULT_SPELLINGS 
 } from './data/initialTemplates';
-import { testConnection, fetchGlobalTemplates, saveGlobalTemplates } from './lib/dbService';
+import { testConnection, fetchGlobalTemplates, saveGlobalTemplates, subscribeToGlobalTemplates } from './lib/dbService';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -103,61 +103,74 @@ export default function App() {
     return Array.from(map.values());
   };
 
-  // Sync templates with Firestore so all users share the exact same presets
+  // Sync templates with Firestore in real-time so all users share the exact templates created by Admin
   useEffect(() => {
-    const syncDbTemplates = async () => {
-      setDbSyncing(true);
-      try {
-        // Test connection
-        await testConnection();
+    setDbSyncing(true);
 
-        // Fetch shared templates from Firestore
-        const remoteTemplates = await fetchGlobalTemplates();
-        if (remoteTemplates) {
-          console.log("Loaded global shared templates from Firestore:", remoteTemplates);
-          
-          // Merge remote templates with local custom templates
-          const mergedCards = mergeByKey(remoteTemplates.cardTemplates || [], cardTemplates, t => t.name);
-          const mergedWheels = mergeByKey(remoteTemplates.wheelTemplates || [], wheelTemplates, t => t.name);
-          const mergedRiddles = mergeByKey(remoteTemplates.riddles || [], riddles, r => r.id || r.question);
-          const mergedSpellings = remoteTemplates.spellings || spellings;
+    // Initial connection test
+    testConnection().catch(console.warn);
 
-          setCardTemplates(mergedCards);
-          setWheelTemplates(mergedWheels);
-          setRiddles(mergedRiddles);
-          setSpellings(mergedSpellings);
+    // Set up real-time listener on shared templates
+    const unsubscribe = subscribeToGlobalTemplates(
+      (remote) => {
+        if (remote) {
+          const cards = remote.cardTemplates && remote.cardTemplates.length > 0 ? remote.cardTemplates : DEFAULT_CARD_TEMPLATES;
+          const wheels = remote.wheelTemplates && remote.wheelTemplates.length > 0 ? remote.wheelTemplates : DEFAULT_WHEEL_TEMPLATES;
+          const rids = remote.riddles && remote.riddles.length > 0 ? remote.riddles : DEFAULT_RIDDLES;
+          const spells = remote.spellings && remote.spellings.length > 0 ? remote.spellings : DEFAULT_SPELLINGS;
+
+          setCardTemplates(cards);
+          setWheelTemplates(wheels);
+          setRiddles(rids);
+          setSpellings(spells);
 
           // Update local backup
-          localStorage.setItem('custom_card_templates', JSON.stringify(mergedCards));
-          localStorage.setItem('custom_wheel_templates', JSON.stringify(mergedWheels));
-          localStorage.setItem('custom_riddles', JSON.stringify(mergedRiddles));
-          localStorage.setItem('custom_spellings', JSON.stringify(mergedSpellings));
-        } else {
-          // If Firestore document is empty and current user is Admin, seed defaults
-          if (user && user.email?.toLowerCase() === 'sovannetmeas.sm@gmail.com') {
-            console.log("Empty database. Seeding Firestore with defaults as Admin...");
-            const defaultPayload = {
-              cardTemplates: DEFAULT_CARD_TEMPLATES,
-              wheelTemplates: DEFAULT_WHEEL_TEMPLATES,
-              riddles: DEFAULT_RIDDLES,
-              spellings: DEFAULT_SPELLINGS
-            };
-            await saveGlobalTemplates(defaultPayload);
-          }
+          localStorage.setItem('custom_card_templates', JSON.stringify(cards));
+          localStorage.setItem('custom_wheel_templates', JSON.stringify(wheels));
+          localStorage.setItem('custom_riddles', JSON.stringify(rids));
+          localStorage.setItem('custom_spellings', JSON.stringify(spells));
         }
-      } catch (err) {
-        console.warn("Firestore sync warning, using local storage cache:", err);
-      } finally {
         setDbSyncing(false);
+      },
+      async (err) => {
+        console.warn("Firestore real-time subscription issue, falling back to one-time fetch or local cache:", err);
+        try {
+          const fallback = await fetchGlobalTemplates();
+          if (fallback) {
+            if (fallback.cardTemplates?.length) setCardTemplates(fallback.cardTemplates);
+            if (fallback.wheelTemplates?.length) setWheelTemplates(fallback.wheelTemplates);
+            if (fallback.riddles?.length) setRiddles(fallback.riddles);
+            if (fallback.spellings?.length) setSpellings(fallback.spellings);
+          }
+        } catch (fetchErr) {
+          console.warn("Fallback fetch also failed:", fetchErr);
+        } finally {
+          setDbSyncing(false);
+        }
       }
-    };
+    );
 
-    if (!authLoading) {
-      syncDbTemplates();
+    // If database is completely empty and current user is Admin, seed initial templates to Firestore
+    if (user && user.email?.toLowerCase() === 'sovannetmeas.sm@gmail.com') {
+      fetchGlobalTemplates().then(async (existing) => {
+        if (!existing) {
+          console.log("Empty database. Seeding Firestore with default templates as Admin...");
+          await saveGlobalTemplates({
+            cardTemplates: DEFAULT_CARD_TEMPLATES,
+            wheelTemplates: DEFAULT_WHEEL_TEMPLATES,
+            riddles: DEFAULT_RIDDLES,
+            spellings: DEFAULT_SPELLINGS
+          });
+        }
+      }).catch(console.warn);
     }
-  }, [authLoading, user]);
 
-  // Save new Wheel Template
+    return () => {
+      unsubscribe();
+    };
+  }, [user]);
+
+  // Save new Wheel Template (Admin only)
   const handleSaveWheelTemplate = async (newTpl: WheelTemplate) => {
     const updated = [...wheelTemplates, newTpl];
     setWheelTemplates(updated);
@@ -177,7 +190,7 @@ export default function App() {
     }
   };
 
-  // Delete Wheel Template
+  // Delete Wheel Template (Admin only)
   const handleDeleteWheelTemplate = async (index: number) => {
     const updated = wheelTemplates.filter((_, idx) => idx !== index);
     setWheelTemplates(updated);
@@ -197,7 +210,7 @@ export default function App() {
     }
   };
 
-  // Save new Card Template
+  // Save new Card Template (Admin only)
   const handleSaveCardTemplate = async (newTpl: CardTemplate) => {
     const updated = [...cardTemplates, newTpl];
     setCardTemplates(updated);
@@ -217,7 +230,7 @@ export default function App() {
     }
   };
 
-  // Delete Card Template
+  // Delete Card Template (Admin only)
   const handleDeleteCardTemplate = async (index: number) => {
     const updated = cardTemplates.filter((_, idx) => idx !== index);
     setCardTemplates(updated);

@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, getDocFromServer } from 'firebase/firestore';
+import { doc, getDoc, setDoc, getDocFromServer, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { db, auth } from './firebase';
 import { CardTemplate, WheelTemplate, RiddleTemplate, SpellingTemplate } from '../data/initialTemplates';
 
@@ -139,3 +139,40 @@ export async function saveGlobalTemplates(data: GlobalTemplatesData): Promise<vo
     handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
+
+/**
+ * Subscribe to real-time updates for global shared templates.
+ * This ensures that whenever an admin creates, updates, or deletes a template,
+ * all active clients (students, teachers, guests) immediately receive the latest templates.
+ */
+export function subscribeToGlobalTemplates(
+  onUpdate: (data: GlobalTemplatesData) => void,
+  onError?: (error: any) => void
+): Unsubscribe {
+  const path = 'templates/global';
+  const docRef = doc(db, 'templates', 'global');
+  
+  return onSnapshot(
+    docRef,
+    (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        onUpdate({
+          cardTemplates: data.cardTemplates || [],
+          wheelTemplates: data.wheelTemplates || [],
+          riddles: data.riddles || [],
+          spellings: data.spellings || []
+        });
+      }
+    },
+    (error) => {
+      if (isOfflineError(error)) {
+        console.warn("Firestore listener is offline. Using local template cache.");
+      } else {
+        console.warn("Firestore snapshot subscription error:", error);
+      }
+      if (onError) onError(error);
+    }
+  );
+}
+
