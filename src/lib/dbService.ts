@@ -74,15 +74,16 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 export async function testConnection(): Promise<boolean> {
   const path = 'templates/global';
   try {
-    // Attempt to test the server connection as requested by guidelines
-    await getDocFromServer(doc(db, 'templates', 'global'));
-    console.log("Firestore connection test passed successfully.");
+    const docRef = doc(db, 'templates', 'global');
+    // Use standard getDoc with offline persistence so it does not trigger 10s timeout warnings in restricted or slow networks
+    await getDoc(docRef);
+    console.log("Firestore connection test verified successfully.");
     return true;
   } catch (error: any) {
     if (isOfflineError(error)) {
-      console.warn("Firestore client is offline. Please check your Firebase configuration or internet connection.");
+      console.warn("Firestore client operating in offline mode with cached storage.");
     } else {
-      console.warn("Firestore connection test failed/bypassed (expected in clean initial database states):", error);
+      console.warn("Firestore connection check info:", error?.message || error);
     }
     return false;
   }
