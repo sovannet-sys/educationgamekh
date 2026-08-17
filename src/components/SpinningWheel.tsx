@@ -12,6 +12,9 @@ import { audioSynth } from '../lib/audio';
 interface SpinningWheelProps {
   onSpinCompleted?: (value: string) => void;
   templates?: WheelTemplate[];
+  isAdmin?: boolean;
+  onSaveTemplate?: (template: WheelTemplate) => void;
+  onDeleteTemplate?: (index: number) => void;
 }
 
 const COLORS = [
@@ -27,7 +30,10 @@ const COLORS = [
 
 export const SpinningWheel: React.FC<SpinningWheelProps> = ({ 
   onSpinCompleted,
-  templates = DEFAULT_WHEEL_TEMPLATES
+  templates = DEFAULT_WHEEL_TEMPLATES,
+  isAdmin = false,
+  onSaveTemplate,
+  onDeleteTemplate
 }) => {
   // Mode: single wheel or double wheels
   const [wheelMode, setWheelMode] = useState<'single' | 'double'>('single');
@@ -69,11 +75,96 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
   // Winners History List
   const [lastWinners, setLastWinners] = useState<string[]>([]);
 
-  // State to control whether to remove sector on win
-  const [removeOnWin, setRemoveOnWin] = useState(true);
+  // State to control whether to remove sector on win (default: false - keep slice)
+  const [removeOnWin, setRemoveOnWin] = useState(false);
 
   // Settings Panel open/close state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Template creation local states
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState('');
+  const [newTemplateValues, setNewTemplateValues] = useState('');
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+  const showNotification = (type: 'success' | 'error', msg: string) => {
+    setNotification({ type, msg });
+    setTimeout(() => {
+      setNotification(null);
+    }, 4000);
+  };
+
+  // Handle saving a new template
+  const handleSaveNewTemplate = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmedName = newTemplateName.trim();
+    const trimmedValues = newTemplateValues.trim();
+
+    if (!trimmedName) {
+      showNotification('error', 'សូមបញ្ចូលឈ្មោះគំរូថ្មី!');
+      return;
+    }
+    if (!trimmedValues) {
+      showNotification('error', 'សូមបញ្ចូលបញ្ជីតម្លៃសម្រាប់គំរូ!');
+      return;
+    }
+
+    const items = trimmedValues.split(',').map(s => s.trim()).filter(Boolean);
+    if (items.length === 0) {
+      showNotification('error', 'សូមបញ្ចូលតម្លៃយ៉ាងហោចណាស់មួយ!');
+      return;
+    }
+
+    const newTpl: WheelTemplate = {
+      name: trimmedName,
+      values: trimmedValues
+    };
+
+    if (onSaveTemplate) {
+      onSaveTemplate(newTpl);
+    } else {
+      // Local storage fallback
+      const saved = localStorage.getItem('custom_wheel_templates');
+      const existing: WheelTemplate[] = saved ? JSON.parse(saved) : templates;
+      const updated = [...existing, newTpl];
+      localStorage.setItem('custom_wheel_templates', JSON.stringify(updated));
+    }
+
+    // Apply immediately to current wheel
+    handleApplyTemplate(trimmedValues);
+    setSelectedTemplateIndex((templates.length).toString());
+
+    setNewTemplateName('');
+    setNewTemplateValues('');
+    setShowCreateForm(false);
+    showNotification('success', `បានរក្សាទុកគំរូ "${trimmedName}" ជាជោគជ័យ! 🎉💾`);
+  };
+
+  // Handle saving bulk input as a template
+  const handlePromoteBulkToTemplate = () => {
+    if (!bulkInput.trim()) {
+      showNotification('error', 'សូមបញ្ចូលតម្លៃនៅលើប្រអប់ជាមុនសិន!');
+      return;
+    }
+    setNewTemplateValues(bulkInput.trim());
+    setShowCreateForm(true);
+  };
+
+  // Handle deleting a template
+  const handleDeleteTemplate = (idx: number, tplName: string) => {
+    if (window.confirm(`តើអ្នកពិតជាចង់លុបគំរូ "${tplName}" មែនទេ?`)) {
+      if (onDeleteTemplate) {
+        onDeleteTemplate(idx);
+      } else {
+        const saved = localStorage.getItem('custom_wheel_templates');
+        const existing: WheelTemplate[] = saved ? JSON.parse(saved) : templates;
+        const updated = existing.filter((_, i) => i !== idx);
+        localStorage.setItem('custom_wheel_templates', JSON.stringify(updated));
+      }
+      setSelectedTemplateIndex('0');
+      showNotification('success', `បានលុបគំរូ "${tplName}" រួចរាល់! 🗑️`);
+    }
+  };
 
   // Reset wheels to initial state based on templates or custom values
   const handleResetWheel = () => {
@@ -770,6 +861,26 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
                   </button>
                 </div>
 
+                {/* Feedback Notification */}
+                {notification && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`p-2.5 rounded-xl text-xs font-bold flex items-center gap-2 ${
+                      notification.type === 'success'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-rose-50 text-rose-700 border border-rose-200'
+                    }`}
+                  >
+                    {notification.type === 'success' ? (
+                      <Check className="w-4 h-4 shrink-0" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                    )}
+                    <span>{notification.msg}</span>
+                  </motion.div>
+                )}
+
                 {/* Remove slice on win section */}
                 <div className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-100/50 flex flex-col gap-3">
                   <label className="inline-flex items-center gap-3 cursor-pointer select-none py-1" id="label-remove-on-win">
@@ -798,26 +909,127 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
                 </div>
 
                 {/* Templates Selection section */}
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto space-y-4">
                   {wheelMode === 'single' ? (
                     /* SINGLE WHEEL TEMPLATE SELECTION */
                     <div className="w-full flex flex-col gap-3">
-                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-emerald-500 animate-pulse" /> ជ្រើសរើស ឬបង្កើតគំរូថាសបង្វិល
-                      </label>
-                      <select
-                        value={selectedTemplateIndex}
-                        onChange={handleTemplateDropdownChange}
-                        className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 hover:border-emerald-200 rounded-xl text-gray-700 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 focus:bg-white transition-all cursor-pointer"
-                        id="wheel-template-select"
-                      >
-                        {templates.map((tpl, idx) => (
-                          <option key={idx} value={idx.toString()}>
-                            {tpl.name}
-                          </option>
-                        ))}
-                        <option value="custom">✍️ បញ្ចូលដោយដៃ (កំណត់ផ្ទាល់ខ្លួន)</option>
-                      </select>
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-emerald-500 animate-pulse" /> {isAdmin ? 'ជ្រើសរើស ឬបង្កើតគំរូថាស' : 'ជ្រើសរើសគំរូថាស'}
+                        </label>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => setShowCreateForm(!showCreateForm)}
+                            className="text-[11px] font-black text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/60 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" /> បង្កើតគំរូថ្មី
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Create New Template Form Accordion (Admin only) */}
+                      <AnimatePresence>
+                        {isAdmin && showCreateForm && (
+                          <motion.form
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            onSubmit={handleSaveNewTemplate}
+                            className="bg-emerald-50/50 border border-emerald-200/70 p-3.5 rounded-2xl space-y-3 overflow-hidden"
+                          >
+                            <div className="flex items-center justify-between border-b border-emerald-200/50 pb-1.5">
+                              <span className="text-xs font-black text-emerald-800 flex items-center gap-1">
+                                ➕ បង្កើតគំរូថាសបង្វិលថ្មី
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setShowCreateForm(false)}
+                                className="text-emerald-500 hover:text-emerald-700"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] font-bold text-gray-600 block mb-1">
+                                ឈ្មោះគំរូ (Template Name)
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="ឧ. ឈ្មោះសិស្សក្រុម A, រង្វាន់លើកទឹកចិត្ត"
+                                value={newTemplateName}
+                                onChange={(e) => setNewTemplateName(e.target.value)}
+                                className="w-full px-3 py-1.5 bg-white border border-gray-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200 rounded-xl text-xs font-semibold"
+                                required
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] font-bold text-gray-600 block mb-1">
+                                បញ្ជីតម្លៃលើថាស (បំបែកដោយសញ្ញាក្បៀស ,)
+                              </label>
+                              <textarea
+                                rows={2}
+                                placeholder="ឧ. សុខា, វិចិត្រ, បញ្ញា, រតនា, ធីតា"
+                                value={newTemplateValues}
+                                onChange={(e) => setNewTemplateValues(e.target.value)}
+                                className="w-full px-3 py-1.5 bg-white border border-gray-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200 rounded-xl text-xs font-semibold font-mono resize-none"
+                                required
+                              />
+                            </div>
+
+                            <div className="flex gap-2 pt-1">
+                              <button
+                                type="submit"
+                                className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                              >
+                                <Check className="w-3.5 h-3.5" /> រក្សាទុកជាគំរូថ្មី (Save)
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setShowCreateForm(false)}
+                                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                              >
+                                បោះបង់
+                              </button>
+                            </div>
+                          </motion.form>
+                        )}
+                      </AnimatePresence>
+
+                      <div className="flex gap-2 items-center">
+                        <select
+                          value={selectedTemplateIndex}
+                          onChange={handleTemplateDropdownChange}
+                          className="flex-1 px-3.5 py-2.5 bg-gray-50 border border-gray-200 hover:border-emerald-200 rounded-xl text-gray-700 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 focus:bg-white transition-all cursor-pointer"
+                          id="wheel-template-select"
+                        >
+                          {templates.map((tpl, idx) => (
+                            <option key={idx} value={idx.toString()}>
+                              {tpl.name}
+                            </option>
+                          ))}
+                          <option value="custom">✍️ បញ្ចូលដោយដៃ (កំណត់ផ្ទាល់ខ្លួន)</option>
+                        </select>
+
+                        {/* Delete template button if admin and selected */}
+                        {isAdmin && selectedTemplateIndex !== 'custom' && templates.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const idx = parseInt(selectedTemplateIndex, 10);
+                              if (templates[idx]) {
+                                handleDeleteTemplate(idx, templates[idx].name);
+                              }
+                            }}
+                            title="លុបគំរូដែលបានជ្រើសនេះ"
+                            className="p-2.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 border border-gray-200 rounded-xl transition-all cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
 
                       {/* Selected values hint - visible if not custom */}
                       {selectedTemplateIndex !== 'custom' && templates[parseInt(selectedTemplateIndex, 10)] && (
@@ -832,7 +1044,7 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
                         <motion.div 
                           initial={{ opacity: 0, y: -8 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="space-y-3 bg-emerald-50/30 p-3 rounded-2xl border border-emerald-100/50"
+                          className="space-y-3 bg-emerald-50/30 p-3.5 rounded-2xl border border-emerald-100/50"
                         >
                           <div className="flex justify-between items-center">
                             <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
@@ -847,13 +1059,25 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
                             className="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all resize-none font-semibold font-mono"
                             id="wheel-bulk-textarea"
                           />
-                          <button
-                            onClick={handleCustomApply}
-                            className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md hover:shadow-emerald-50 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                            id="wheel-bulk-submit"
-                          >
-                            <Check className="w-4 h-4" /> អនុវត្តតម្លៃដែលបានបញ្ចូល
-                          </button>
+                          <div className={isAdmin ? "grid grid-cols-2 gap-2" : "flex"}>
+                            <button
+                              type="button"
+                              onClick={handleCustomApply}
+                              className={`py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md hover:shadow-emerald-50 transition-all flex items-center justify-center gap-1.5 cursor-pointer ${isAdmin ? '' : 'w-full'}`}
+                              id="wheel-bulk-submit"
+                            >
+                              <Check className="w-4 h-4" /> អនុវត្តតម្លៃ
+                            </button>
+                            {isAdmin && (
+                              <button
+                                type="button"
+                                onClick={handlePromoteBulkToTemplate}
+                                className="py-2 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-300 rounded-xl text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                              >
+                                <Plus className="w-4 h-4" /> រក្សាទុកជាគំរូ
+                              </button>
+                            )}
+                          </div>
                         </motion.div>
                       )}
                     </div>

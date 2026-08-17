@@ -90,6 +90,19 @@ export default function App() {
 
   const [dbSyncing, setDbSyncing] = useState(false);
 
+  // Helper to merge remote templates with locally saved custom templates so user creations are never lost
+  const mergeByKey = <T,>(remote: T[], local: T[], getKey: (item: T) => string): T[] => {
+    const map = new Map<string, T>();
+    remote.forEach(t => map.set(getKey(t), t));
+    local.forEach(t => {
+      const k = getKey(t);
+      if (!map.has(k)) {
+        map.set(k, t);
+      }
+    });
+    return Array.from(map.values());
+  };
+
   // Sync templates with Firestore so all users share the exact same presets
   useEffect(() => {
     const syncDbTemplates = async () => {
@@ -102,16 +115,23 @@ export default function App() {
         const remoteTemplates = await fetchGlobalTemplates();
         if (remoteTemplates) {
           console.log("Loaded global shared templates from Firestore:", remoteTemplates);
-          setCardTemplates(remoteTemplates.cardTemplates);
-          setWheelTemplates(remoteTemplates.wheelTemplates);
-          setRiddles(remoteTemplates.riddles);
-          setSpellings(remoteTemplates.spellings);
+          
+          // Merge remote templates with local custom templates
+          const mergedCards = mergeByKey(remoteTemplates.cardTemplates || [], cardTemplates, t => t.name);
+          const mergedWheels = mergeByKey(remoteTemplates.wheelTemplates || [], wheelTemplates, t => t.name);
+          const mergedRiddles = mergeByKey(remoteTemplates.riddles || [], riddles, r => r.id || r.question);
+          const mergedSpellings = remoteTemplates.spellings || spellings;
+
+          setCardTemplates(mergedCards);
+          setWheelTemplates(mergedWheels);
+          setRiddles(mergedRiddles);
+          setSpellings(mergedSpellings);
 
           // Update local backup
-          localStorage.setItem('custom_card_templates', JSON.stringify(remoteTemplates.cardTemplates));
-          localStorage.setItem('custom_wheel_templates', JSON.stringify(remoteTemplates.wheelTemplates));
-          localStorage.setItem('custom_riddles', JSON.stringify(remoteTemplates.riddles));
-          localStorage.setItem('custom_spellings', JSON.stringify(remoteTemplates.spellings));
+          localStorage.setItem('custom_card_templates', JSON.stringify(mergedCards));
+          localStorage.setItem('custom_wheel_templates', JSON.stringify(mergedWheels));
+          localStorage.setItem('custom_riddles', JSON.stringify(mergedRiddles));
+          localStorage.setItem('custom_spellings', JSON.stringify(mergedSpellings));
         } else {
           // If Firestore document is empty and current user is Admin, seed defaults
           if (user && user.email?.toLowerCase() === 'sovannetmeas.sm@gmail.com') {
@@ -136,6 +156,86 @@ export default function App() {
       syncDbTemplates();
     }
   }, [authLoading, user]);
+
+  // Save new Wheel Template
+  const handleSaveWheelTemplate = async (newTpl: WheelTemplate) => {
+    const updated = [...wheelTemplates, newTpl];
+    setWheelTemplates(updated);
+    localStorage.setItem('custom_wheel_templates', JSON.stringify(updated));
+
+    if (user && user.email?.toLowerCase() === 'sovannetmeas.sm@gmail.com') {
+      try {
+        await saveGlobalTemplates({
+          cardTemplates,
+          wheelTemplates: updated,
+          riddles,
+          spellings
+        });
+      } catch (err) {
+        console.warn("Could not save to Firestore, saved to local cache:", err);
+      }
+    }
+  };
+
+  // Delete Wheel Template
+  const handleDeleteWheelTemplate = async (index: number) => {
+    const updated = wheelTemplates.filter((_, idx) => idx !== index);
+    setWheelTemplates(updated);
+    localStorage.setItem('custom_wheel_templates', JSON.stringify(updated));
+
+    if (user && user.email?.toLowerCase() === 'sovannetmeas.sm@gmail.com') {
+      try {
+        await saveGlobalTemplates({
+          cardTemplates,
+          wheelTemplates: updated,
+          riddles,
+          spellings
+        });
+      } catch (err) {
+        console.warn("Could not save to Firestore, saved to local cache:", err);
+      }
+    }
+  };
+
+  // Save new Card Template
+  const handleSaveCardTemplate = async (newTpl: CardTemplate) => {
+    const updated = [...cardTemplates, newTpl];
+    setCardTemplates(updated);
+    localStorage.setItem('custom_card_templates', JSON.stringify(updated));
+
+    if (user && user.email?.toLowerCase() === 'sovannetmeas.sm@gmail.com') {
+      try {
+        await saveGlobalTemplates({
+          cardTemplates: updated,
+          wheelTemplates,
+          riddles,
+          spellings
+        });
+      } catch (err) {
+        console.warn("Could not save to Firestore, saved to local cache:", err);
+      }
+    }
+  };
+
+  // Delete Card Template
+  const handleDeleteCardTemplate = async (index: number) => {
+    const updated = cardTemplates.filter((_, idx) => idx !== index);
+    setCardTemplates(updated);
+    localStorage.setItem('custom_card_templates', JSON.stringify(updated));
+
+    if (user && user.email?.toLowerCase() === 'sovannetmeas.sm@gmail.com') {
+      try {
+        await saveGlobalTemplates({
+          cardTemplates: updated,
+          wheelTemplates,
+          riddles,
+          spellings
+        });
+      } catch (err) {
+        console.warn("Could not save to Firestore, saved to local cache:", err);
+      }
+    }
+  };
 
   const handleResetAll = () => {
     localStorage.removeItem('custom_card_templates');
@@ -337,6 +437,10 @@ export default function App() {
               practiceMode={mathPracticeMode}
               setPracticeMode={setMathPracticeMode}
               isAdmin={isAdmin}
+              onSaveWheelTemplate={handleSaveWheelTemplate}
+              onDeleteWheelTemplate={handleDeleteWheelTemplate}
+              onSaveCardTemplate={handleSaveCardTemplate}
+              onDeleteCardTemplate={handleDeleteCardTemplate}
             />
           </section>
         )}
@@ -350,6 +454,11 @@ export default function App() {
               customSpellings={spellings}
               khmerMode={khmerGameMode}
               setKhmerMode={setKhmerGameMode}
+              isAdmin={isAdmin}
+              onSaveWheelTemplate={handleSaveWheelTemplate}
+              onDeleteWheelTemplate={handleDeleteWheelTemplate}
+              onSaveCardTemplate={handleSaveCardTemplate}
+              onDeleteCardTemplate={handleDeleteCardTemplate}
             />
           </section>
         )}

@@ -17,6 +17,10 @@ interface MathPracticeProps {
   practiceMode: 'menu' | 'auto' | 'cards' | 'wheel' | 'dice' | 'snakes';
   setPracticeMode: (mode: 'menu' | 'auto' | 'cards' | 'wheel' | 'dice' | 'snakes') => void;
   isAdmin?: boolean;
+  onSaveWheelTemplate?: (template: WheelTemplate) => void;
+  onDeleteWheelTemplate?: (index: number) => void;
+  onSaveCardTemplate?: (template: CardTemplate) => void;
+  onDeleteCardTemplate?: (index: number) => void;
 }
 
 export const MathPractice: React.FC<MathPracticeProps> = ({ 
@@ -24,7 +28,11 @@ export const MathPractice: React.FC<MathPracticeProps> = ({
   wheelTemplates,
   practiceMode,
   setPracticeMode,
-  isAdmin
+  isAdmin,
+  onSaveWheelTemplate,
+  onDeleteWheelTemplate,
+  onSaveCardTemplate,
+  onDeleteCardTemplate
 }) => {
   
   // Auto Mode States
@@ -658,6 +666,9 @@ export const MathPractice: React.FC<MathPracticeProps> = ({
             <RandomCards 
               templates={cardTemplates}
               onCardSelected={() => {}} 
+              isAdmin={isAdmin}
+              onSaveTemplate={onSaveCardTemplate}
+              onDeleteTemplate={onDeleteCardTemplate}
             />
           </div>
         </div>
@@ -668,6 +679,9 @@ export const MathPractice: React.FC<MathPracticeProps> = ({
             <SpinningWheel 
               templates={wheelTemplates}
               onSpinCompleted={() => {}} 
+              isAdmin={isAdmin}
+              onSaveTemplate={onSaveWheelTemplate}
+              onDeleteTemplate={onDeleteWheelTemplate}
             />
           </div>
         </div>

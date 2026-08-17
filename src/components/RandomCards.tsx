@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Shuffle, Plus, Trash2, RotateCcw, Sparkles, Layers, 
-  Eye, EyeOff, LayoutGrid, HelpCircle, Check, Info, GraduationCap 
+  Eye, EyeOff, LayoutGrid, HelpCircle, Check, Info, GraduationCap, X, AlertCircle 
 } from 'lucide-react';
 import { CardItem } from '../types';
 import { CardTemplate, DEFAULT_CARD_TEMPLATES } from '../data/initialTemplates';
@@ -11,11 +11,17 @@ import { audioSynth } from '../lib/audio';
 interface RandomCardsProps {
   onCardSelected?: (value: string) => void;
   templates?: CardTemplate[];
+  isAdmin?: boolean;
+  onSaveTemplate?: (template: CardTemplate) => void;
+  onDeleteTemplate?: (index: number) => void;
 }
 
 export const RandomCards: React.FC<RandomCardsProps> = ({ 
   onCardSelected, 
-  templates = DEFAULT_CARD_TEMPLATES 
+  templates = DEFAULT_CARD_TEMPLATES,
+  isAdmin = false,
+  onSaveTemplate,
+  onDeleteTemplate
 }) => {
   const [cards, setCards] = useState<CardItem[]>(() => {
     const defaultVals = templates[0]?.values || '10, 25, 50, 75, 100';
@@ -34,6 +40,19 @@ export const RandomCards: React.FC<RandomCardsProps> = ({
   const [drawnCard, setDrawnCard] = useState<CardItem | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [lastDrawn, setLastDrawn] = useState<string[]>([]);
+
+  // Template creation local states
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState('');
+  const [newTemplateValues, setNewTemplateValues] = useState('');
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+  const showNotification = (type: 'success' | 'error', msg: string) => {
+    setNotification({ type, msg });
+    setTimeout(() => {
+      setNotification(null);
+    }, 4000);
+  };
 
   // Apply Template
   const handleApplyTemplate = (templateValues: string) => {
@@ -86,6 +105,70 @@ export const RandomCards: React.FC<RandomCardsProps> = ({
   const handleCustomApply = () => {
     if (!bulkInput.trim()) return;
     handleApplyTemplate(bulkInput);
+  };
+
+  // Handle saving new card template
+  const handleSaveNewTemplate = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmedName = newTemplateName.trim();
+    const trimmedValues = newTemplateValues.trim();
+
+    if (!trimmedName) {
+      showNotification('error', 'សូមបញ្ចូលឈ្មោះគំរូថ្មី!');
+      return;
+    }
+    if (!trimmedValues) {
+      showNotification('error', 'សូមបញ្ចូលបញ្ជីតម្លៃសម្រាប់គំរូ!');
+      return;
+    }
+
+    const newTpl: CardTemplate = {
+      name: trimmedName,
+      values: trimmedValues
+    };
+
+    if (onSaveTemplate) {
+      onSaveTemplate(newTpl);
+    } else {
+      const saved = localStorage.getItem('custom_card_templates');
+      const existing: CardTemplate[] = saved ? JSON.parse(saved) : templates;
+      const updated = [...existing, newTpl];
+      localStorage.setItem('custom_card_templates', JSON.stringify(updated));
+    }
+
+    handleApplyTemplate(trimmedValues);
+    setSelectedTemplateIndex((templates.length).toString());
+
+    setNewTemplateName('');
+    setNewTemplateValues('');
+    setShowCreateForm(false);
+    showNotification('success', `បានរក្សាទុកគំរូ "${trimmedName}" ជាជោគជ័យ! 🎉💾`);
+  };
+
+  // Promote bulk input to template
+  const handlePromoteBulkToTemplate = () => {
+    if (!bulkInput.trim()) {
+      showNotification('error', 'សូមបញ្ចូលតម្លៃនៅលើប្រអប់ជាមុនសិន!');
+      return;
+    }
+    setNewTemplateValues(bulkInput.trim());
+    setShowCreateForm(true);
+  };
+
+  // Delete card template
+  const handleDeleteTemplate = (idx: number, tplName: string) => {
+    if (window.confirm(`តើអ្នកពិតជាចង់លុបគំរូ "${tplName}" មែនទេ?`)) {
+      if (onDeleteTemplate) {
+        onDeleteTemplate(idx);
+      } else {
+        const saved = localStorage.getItem('custom_card_templates');
+        const existing: CardTemplate[] = saved ? JSON.parse(saved) : templates;
+        const updated = existing.filter((_, i) => i !== idx);
+        localStorage.setItem('custom_card_templates', JSON.stringify(updated));
+      }
+      setSelectedTemplateIndex('0');
+      showNotification('success', `បានលុបគំរូ "${tplName}" រួចរាល់! 🗑️`);
+    }
   };
 
   // Delete card
@@ -186,28 +269,149 @@ export const RandomCards: React.FC<RandomCardsProps> = ({
         </div>
       </div>
 
-      {/* Template Selection Dropdown */}
-      <div className="w-full bg-white p-4 sm:p-5 rounded-2xl border border-gray-100 shadow-xs mb-4 sm:mb-6">
-        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2 flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-indigo-500 animate-pulse" /> ជ្រើសរើស ឬបង្កើតគំរូកាត
-        </label>
-        <select
-          value={selectedTemplateIndex}
-          onChange={handleTemplateDropdownChange}
-          className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 hover:border-indigo-200 rounded-xl text-gray-700 text-xs sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 focus:bg-white transition-all cursor-pointer"
-          id="card-template-select"
+      {/* Feedback Notification */}
+      {notification && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`p-3 mb-4 rounded-xl text-xs font-bold flex items-center gap-2 ${
+            notification.type === 'success'
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              : 'bg-rose-50 text-rose-700 border border-rose-200'
+          }`}
         >
-          {templates.map((tpl, idx) => (
-            <option key={idx} value={idx.toString()}>
-              {tpl.name}
-            </option>
-          ))}
-          <option value="custom">✍️ បញ្ចូលដោយដៃ (កំណត់ផ្ទាល់ខ្លួន)</option>
-        </select>
+          {notification.type === 'success' ? (
+            <Check className="w-4 h-4 shrink-0" />
+          ) : (
+            <AlertCircle className="w-4 h-4 shrink-0" />
+          )}
+          <span>{notification.msg}</span>
+        </motion.div>
+      )}
+
+      {/* Template Selection Dropdown */}
+      <div className="w-full bg-white p-4 sm:p-5 rounded-2xl border border-gray-100 shadow-xs mb-4 sm:mb-6 space-y-3">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-500 animate-pulse" /> {isAdmin ? 'ជ្រើសរើស ឬបង្កើតគំរូកាត' : 'ជ្រើសរើសគំរូកាត'}
+          </label>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setShowCreateForm(!showCreateForm)}
+              className="text-[11px] font-black text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/60 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" /> បង្កើតគំរូថ្មី
+            </button>
+          )}
+        </div>
+
+        {/* Create New Template Form Accordion (Admin only) */}
+        <AnimatePresence>
+          {isAdmin && showCreateForm && (
+            <motion.form
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              onSubmit={handleSaveNewTemplate}
+              className="bg-indigo-50/50 border border-indigo-200/70 p-3.5 rounded-2xl space-y-3 overflow-hidden"
+            >
+              <div className="flex items-center justify-between border-b border-indigo-200/50 pb-1.5">
+                <span className="text-xs font-black text-indigo-800 flex items-center gap-1">
+                  ➕ បង្កើតគំរូកាតថ្មី
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateForm(false)}
+                  className="text-indigo-500 hover:text-indigo-700"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-gray-600 block mb-1">
+                  ឈ្មោះគំរូ (Template Name)
+                </label>
+                <input
+                  type="text"
+                  placeholder="ឧ. សំណួរបូកលេខ, ឈ្មោះក្រុម"
+                  value={newTemplateName}
+                  onChange={(e) => setNewTemplateName(e.target.value)}
+                  className="w-full px-3 py-1.5 bg-white border border-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 rounded-xl text-xs font-semibold"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-gray-600 block mb-1">
+                  បញ្ជីតម្លៃលើកាត (បំបែកដោយសញ្ញាក្បៀស ,)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="ឧ. 10, 20, 30, 40, 50"
+                  value={newTemplateValues}
+                  onChange={(e) => setNewTemplateValues(e.target.value)}
+                  className="w-full px-3 py-1.5 bg-white border border-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 rounded-xl text-xs font-semibold font-mono resize-none"
+                  required
+                />
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="submit"
+                  className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Check className="w-3.5 h-3.5" /> រក្សាទុកជាគំរូថ្មី (Save)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateForm(false)}
+                  className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  បោះបង់
+                </button>
+              </div>
+            </motion.form>
+          )}
+        </AnimatePresence>
+
+        <div className="flex gap-2 items-center">
+          <select
+            value={selectedTemplateIndex}
+            onChange={handleTemplateDropdownChange}
+            className="flex-1 px-3.5 py-2.5 bg-gray-50 border border-gray-200 hover:border-indigo-200 rounded-xl text-gray-700 text-xs sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 focus:bg-white transition-all cursor-pointer"
+            id="card-template-select"
+          >
+            {templates.map((tpl, idx) => (
+              <option key={idx} value={idx.toString()}>
+                {tpl.name}
+              </option>
+            ))}
+            <option value="custom">✍️ បញ្ចូលដោយដៃ (កំណត់ផ្ទាល់ខ្លួន)</option>
+          </select>
+
+          {/* Delete Template Button (Admin only) */}
+          {isAdmin && selectedTemplateIndex !== 'custom' && templates.length > 1 && (
+            <button
+              type="button"
+              onClick={() => {
+                const idx = parseInt(selectedTemplateIndex, 10);
+                if (templates[idx]) {
+                  handleDeleteTemplate(idx, templates[idx].name);
+                }
+              }}
+              title="លុបគំរូដែលបានជ្រើសនេះ"
+              className="p-2.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 border border-gray-200 rounded-xl transition-all cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
 
         {/* Selected values hint - visible if not custom */}
         {selectedTemplateIndex !== 'custom' && templates[parseInt(selectedTemplateIndex, 10)] && (
-          <p className="text-[11px] text-gray-400 mt-2 font-semibold flex items-center gap-1">
+          <p className="text-[11px] text-gray-400 font-semibold flex items-center gap-1">
             <Info className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
             តម្លៃក្នុងគំរូ៖ <span className="font-mono bg-gray-50 px-1.5 py-0.5 rounded text-gray-600 truncate">{templates[parseInt(selectedTemplateIndex, 10)].values}</span>
           </p>
@@ -218,7 +422,7 @@ export const RandomCards: React.FC<RandomCardsProps> = ({
           <motion.div 
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-3 mt-3 bg-indigo-50/30 p-3.5 rounded-2xl border border-indigo-100/50"
+            className="space-y-3 bg-indigo-50/30 p-3.5 rounded-2xl border border-indigo-100/50"
           >
             <div className="flex justify-between items-center">
               <span className="text-[11px] font-bold text-indigo-700 flex items-center gap-1">
@@ -233,13 +437,25 @@ export const RandomCards: React.FC<RandomCardsProps> = ({
               className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-700 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 transition-all resize-none font-semibold font-mono"
               id="card-bulk-textarea"
             />
-            <button
-              onClick={handleCustomApply}
-              className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md hover:shadow-indigo-50 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              id="card-bulk-submit"
-            >
-              <Check className="w-4 h-4" /> អនុវត្តតម្លៃដែលបានបញ្ចូល
-            </button>
+            <div className={isAdmin ? "grid grid-cols-2 gap-2" : "flex"}>
+              <button
+                type="button"
+                onClick={handleCustomApply}
+                className={`py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md hover:shadow-indigo-50 transition-all flex items-center justify-center gap-1.5 cursor-pointer ${isAdmin ? '' : 'w-full'}`}
+                id="card-bulk-submit"
+              >
+                <Check className="w-4 h-4" /> អនុវត្តតម្លៃ
+              </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={handlePromoteBulkToTemplate}
+                  className="py-2 bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-300 rounded-xl text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" /> រក្សាទុកជាគំរូ
+                </button>
+              )}
+            </div>
           </motion.div>
         )}
       </div>

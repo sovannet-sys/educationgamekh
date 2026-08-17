@@ -450,6 +450,11 @@ interface KhmerGameProps {
   customSpellings?: SpellingTemplate[];
   khmerMode: 'menu' | 'riddle' | 'spelling' | 'cards' | 'wheel' | 'assembly' | 'daily';
   setKhmerMode: (mode: 'menu' | 'riddle' | 'spelling' | 'cards' | 'wheel' | 'assembly' | 'daily') => void;
+  isAdmin?: boolean;
+  onSaveWheelTemplate?: (template: WheelTemplate) => void;
+  onDeleteWheelTemplate?: (index: number) => void;
+  onSaveCardTemplate?: (template: CardTemplate) => void;
+  onDeleteCardTemplate?: (index: number) => void;
 }
 
 export interface DailyQuestion {
@@ -470,7 +475,12 @@ export const KhmerGame: React.FC<KhmerGameProps> = ({
   customRiddles = DEFAULT_RIDDLES,
   customSpellings = DEFAULT_SPELLINGS,
   khmerMode,
-  setKhmerMode
+  setKhmerMode,
+  isAdmin,
+  onSaveWheelTemplate,
+  onDeleteWheelTemplate,
+  onSaveCardTemplate,
+  onDeleteCardTemplate
 }) => {
   const RIDDLES = customRiddles.length > 0 ? customRiddles : DEFAULT_RIDDLES;
   const SPELLINGS = customSpellings.length > 0 ? customSpellings : DEFAULT_SPELLINGS;
@@ -1886,6 +1896,9 @@ export const KhmerGame: React.FC<KhmerGameProps> = ({
             <RandomCards 
               templates={cardTemplates}
               onCardSelected={() => {}} 
+              isAdmin={isAdmin}
+              onSaveTemplate={onSaveCardTemplate}
+              onDeleteTemplate={onDeleteCardTemplate}
             />
           </div>
         </div>
@@ -1896,6 +1909,9 @@ export const KhmerGame: React.FC<KhmerGameProps> = ({
             <SpinningWheel 
               templates={wheelTemplates}
               onSpinCompleted={() => {}} 
+              isAdmin={isAdmin}
+              onSaveTemplate={onSaveWheelTemplate}
+              onDeleteTemplate={onDeleteWheelTemplate}
             />
           </div>
         </div>
