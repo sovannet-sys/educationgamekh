@@ -238,6 +238,9 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
       const idx = parseInt(selectedTemplateIndex, 10);
       if (templates[idx]) {
         handleApplyTemplate(templates[idx].values);
+      } else if (templates.length > 0) {
+        setSelectedTemplateIndex('0');
+        handleApplyTemplate(templates[0].values);
       }
     }
   }, [templates, selectedTemplateIndex]);
@@ -248,6 +251,10 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
       const idx = parseInt(selectedTemplateIndex2, 10);
       if (templates[idx]) {
         handleApplyTemplate2(templates[idx].values);
+      } else if (templates.length > 0) {
+        const fallbackIdx = templates.length > 1 ? 1 : 0;
+        setSelectedTemplateIndex2(fallbackIdx.toString());
+        handleApplyTemplate2(templates[fallbackIdx].values);
       }
     }
   }, [templates, selectedTemplateIndex2]);

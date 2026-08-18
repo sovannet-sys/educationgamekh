@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Settings, Layers, Compass, BookOpen, AlertCircle, Plus, 
@@ -45,22 +45,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // Check if drafts differ from actual committed states (to show unsaved changes alert)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const unsavedRef = useRef(false);
 
-  // Initialize draft states from props
+  // Initialize draft states from props ONLY IF there are no unsaved pending edits
   useEffect(() => {
-    setDraftCards([...cardTemplates]);
+    if (!unsavedRef.current) {
+      setDraftCards([...cardTemplates]);
+    }
   }, [cardTemplates]);
 
   useEffect(() => {
-    setDraftWheels([...wheelTemplates]);
+    if (!unsavedRef.current) {
+      setDraftWheels([...wheelTemplates]);
+    }
   }, [wheelTemplates]);
 
   useEffect(() => {
-    setDraftRiddles([...riddles]);
+    if (!unsavedRef.current) {
+      setDraftRiddles([...riddles]);
+    }
   }, [riddles]);
 
   useEffect(() => {
-    setDraftSpellings([...spellings]);
+    if (!unsavedRef.current) {
+      setDraftSpellings([...spellings]);
+    }
   }, [spellings]);
 
   // Determine if there are any changes between drafts and actual props
@@ -70,7 +79,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const riddlesChanged = JSON.stringify(draftRiddles) !== JSON.stringify(riddles);
     const spellingsChanged = JSON.stringify(draftSpellings) !== JSON.stringify(spellings);
     
-    setHasUnsavedChanges(cardsChanged || wheelsChanged || riddlesChanged || spellingsChanged);
+    const isDirty = cardsChanged || wheelsChanged || riddlesChanged || spellingsChanged;
+    setHasUnsavedChanges(isDirty);
+    unsavedRef.current = isDirty;
   }, [draftCards, draftWheels, draftRiddles, draftSpellings, cardTemplates, wheelTemplates, riddles, spellings]);
 
   // Card Template local states for adding new
@@ -178,6 +189,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setDraftCards(updated);
   };
 
+  const handleSaveSingleCardTemplate = async (index: number) => {
+    const tpl = draftCards[index];
+    if (!tpl) return;
+    await persistAndSync(draftCards, draftWheels, draftRiddles, draftSpellings, `បានរក្សាទុកគំរូបៀរ "${tpl.name}" រួចរាល់! 💾`);
+  };
+
   // WHEEL TEMPLATE ACTIONS
   const handleAddWheelTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -203,6 +220,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const updated = [...draftWheels];
     updated[index] = { name, values };
     setDraftWheels(updated);
+  };
+
+  const handleSaveSingleWheelTemplate = async (index: number) => {
+    const tpl = draftWheels[index];
+    if (!tpl) return;
+    await persistAndSync(draftCards, draftWheels, draftRiddles, draftSpellings, `បានរក្សាទុកគំរូថាស "${tpl.name}" រួចរាល់! 💾`);
   };
 
   // RIDDLE ACTIONS
@@ -256,6 +279,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       return r;
     });
     setDraftRiddles(updated);
+  };
+
+  const handleSaveSingleRiddle = async (id: string) => {
+    const r = draftRiddles.find(item => item.id === id);
+    await persistAndSync(draftCards, draftWheels, draftRiddles, draftSpellings, `បានរក្សាទុកពាក្យបណ្តៅ "${r?.question?.slice(0, 15) || ''}..." រួចរាល់! 💾`);
   };
 
   // SPELLING ACTIONS
@@ -312,6 +340,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       return s;
     });
     setDraftSpellings(updated);
+  };
+
+  const handleSaveSingleSpelling = async (id: string) => {
+    const s = draftSpellings.find(item => item.id === id);
+    await persistAndSync(draftCards, draftWheels, draftRiddles, draftSpellings, `បានរក្សាទុកអក្ខរាវិរុទ្ធ "${s?.fullWord || ''}" រួចរាល់! 💾`);
   };
 
   // Reset Drafts from Parent state
@@ -585,15 +618,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             />
                           </div>
                         </div>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 shrink-0">
                           {isRowChanged && (
-                            <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-md shrink-0">
-                              មិនទាន់រក្សាទុក
-                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveSingleCardTemplate(idx)}
+                              className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 shadow-xs cursor-pointer"
+                              title="រក្សាទុកការកែប្រែជួរនេះ"
+                            >
+                              <Save className="w-3.5 h-3.5" /> រក្សាទុក
+                            </button>
                           )}
                           <button
                             onClick={() => handleDeleteCardTemplate(idx)}
-                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
                             title="លុបចោល"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -672,15 +710,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             />
                           </div>
                         </div>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 shrink-0">
                           {isRowChanged && (
-                            <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-md shrink-0">
-                              មិនទាន់រក្សាទុក
-                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveSingleWheelTemplate(idx)}
+                              className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 shadow-xs cursor-pointer"
+                              title="រក្សាទុកការកែប្រែជួរនេះ"
+                            >
+                              <Save className="w-3.5 h-3.5" /> រក្សាទុក
+                            </button>
                           )}
                           <button
                             onClick={() => handleDeleteWheelTemplate(idx)}
-                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
                             title="លុបចោល"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -813,10 +856,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
 
                         {isRowChanged && (
-                          <div className="pt-1 flex justify-end">
+                          <div className="pt-1 flex justify-between items-center">
                             <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">
                               មានការផ្លាស់ប្ដូរមិនទាន់រក្សាទុក
                             </span>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveSingleRiddle(r.id)}
+                              className="px-2.5 py-1 bg-violet-600 hover:bg-violet-700 text-white text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 shadow-xs cursor-pointer"
+                              title="រក្សាទុកពាក្យបណ្តៅនេះ"
+                            >
+                              <Save className="w-3.5 h-3.5" /> រក្សាទុក
+                            </button>
                           </div>
                         )}
                       </div>
@@ -963,10 +1014,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
 
                         {isRowChanged && (
-                          <div className="pt-1 flex justify-end">
+                          <div className="pt-1 flex justify-between items-center">
                             <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">
                               មានការផ្លាស់ប្ដូរមិនទាន់រក្សាទុក
                             </span>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveSingleSpelling(s.id)}
+                              className="px-2.5 py-1 bg-fuchsia-600 hover:bg-fuchsia-700 text-white text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 shadow-xs cursor-pointer"
+                              title="រក្សាទុកអក្ខរាវិរុទ្ធនេះ"
+                            >
+                              <Save className="w-3.5 h-3.5" /> រក្សាទុក
+                            </button>
                           </div>
                         )}
                       </div>
