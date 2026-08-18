@@ -176,7 +176,7 @@ export default function App() {
     setWheelTemplates(updated);
     localStorage.setItem('custom_wheel_templates', JSON.stringify(updated));
 
-    if (user && user.email?.toLowerCase() === 'sovannetmeas.sm@gmail.com') {
+    if (isAdmin) {
       try {
         await saveGlobalTemplates({
           cardTemplates,
@@ -196,7 +196,7 @@ export default function App() {
     setWheelTemplates(updated);
     localStorage.setItem('custom_wheel_templates', JSON.stringify(updated));
 
-    if (user && user.email?.toLowerCase() === 'sovannetmeas.sm@gmail.com') {
+    if (isAdmin) {
       try {
         await saveGlobalTemplates({
           cardTemplates,
@@ -216,7 +216,7 @@ export default function App() {
     setCardTemplates(updated);
     localStorage.setItem('custom_card_templates', JSON.stringify(updated));
 
-    if (user && user.email?.toLowerCase() === 'sovannetmeas.sm@gmail.com') {
+    if (isAdmin) {
       try {
         await saveGlobalTemplates({
           cardTemplates: updated,
@@ -236,7 +236,7 @@ export default function App() {
     setCardTemplates(updated);
     localStorage.setItem('custom_card_templates', JSON.stringify(updated));
 
-    if (user && user.email?.toLowerCase() === 'sovannetmeas.sm@gmail.com') {
+    if (isAdmin) {
       try {
         await saveGlobalTemplates({
           cardTemplates: updated,

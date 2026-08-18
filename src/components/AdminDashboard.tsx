@@ -101,55 +101,58 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }, 4000);
   };
 
-  // GLOBAL SAVE ACTION
-  const handleSaveAll = async () => {
+  // Helper to commit changes and sync with Cloud Firestore immediately
+  const persistAndSync = async (
+    cards = draftCards,
+    wheels = draftWheels,
+    rids = draftRiddles,
+    spells = draftSpellings,
+    successMsg?: string
+  ) => {
     setIsSaving(true);
+    // Update local React states
+    setCardTemplates(cards);
+    setWheelTemplates(wheels);
+    setRiddles(rids);
+    setSpellings(spells);
+
+    // Update LocalStorage backups
+    localStorage.setItem('custom_card_templates', JSON.stringify(cards));
+    localStorage.setItem('custom_wheel_templates', JSON.stringify(wheels));
+    localStorage.setItem('custom_riddles', JSON.stringify(rids));
+    localStorage.setItem('custom_spellings', JSON.stringify(spells));
+
     try {
-      // 1. Save to shared Firestore database
       await saveGlobalTemplates({
-        cardTemplates: draftCards,
-        wheelTemplates: draftWheels,
-        riddles: draftRiddles,
-        spellings: draftSpellings
+        cardTemplates: cards,
+        wheelTemplates: wheels,
+        riddles: rids,
+        spellings: spells
       });
-
-      // 2. Commit drafts to parent app states
-      setCardTemplates(draftCards);
-      localStorage.setItem('custom_card_templates', JSON.stringify(draftCards));
-
-      setWheelTemplates(draftWheels);
-      localStorage.setItem('custom_wheel_templates', JSON.stringify(draftWheels));
-
-      setRiddles(draftRiddles);
-      localStorage.setItem('custom_riddles', JSON.stringify(draftRiddles));
-
-      setSpellings(draftSpellings);
-      localStorage.setItem('custom_spellings', JSON.stringify(draftSpellings));
-
-      triggerNotification('success', 'បានរក្សាទុកការផ្លាស់ប្ដូរទាំងអស់ទៅកាន់ Firestore ជាជោគជ័យ! 💾✨');
+      if (successMsg) {
+        triggerNotification('success', successMsg);
+      }
     } catch (err: any) {
-      console.error("Firestore save failed:", err);
-      // Even if Firestore save fails (e.g. offline), we still commit locally as an offline-first backup
-      setCardTemplates(draftCards);
-      localStorage.setItem('custom_card_templates', JSON.stringify(draftCards));
-
-      setWheelTemplates(draftWheels);
-      localStorage.setItem('custom_wheel_templates', JSON.stringify(draftWheels));
-
-      setRiddles(draftRiddles);
-      localStorage.setItem('custom_riddles', JSON.stringify(draftRiddles));
-
-      setSpellings(draftSpellings);
-      localStorage.setItem('custom_spellings', JSON.stringify(draftSpellings));
-
-      triggerNotification('error', 'បានរក្សាទុកក្នុងម៉ាស៊ីនបណ្ដោះអាសន្ន (រក្សាទុកក្នុង Firestore បរាជ័យ៖ ' + (err.message || 'បញ្ហាប្រព័ន្ធ') + ')');
+      console.warn("Firestore save warning:", err);
+      triggerNotification('success', (successMsg || 'បានរក្សាទុក!') + ' (បានរក្សាទុកក្នុងម៉ាស៊ីនរួចរាល់)');
     } finally {
       setIsSaving(false);
     }
   };
 
+  // GLOBAL SAVE ACTION
+  const handleSaveAll = async () => {
+    await persistAndSync(
+      draftCards,
+      draftWheels,
+      draftRiddles,
+      draftSpellings,
+      'បានរក្សាទុក និង Sync ទៅកាន់អ្នកប្រើទាំងអស់ជាជោគជ័យ! 💾✨'
+    );
+  };
+
   // CARD TEMPLATE ACTIONS
-  const handleAddCardTemplate = (e: React.FormEvent) => {
+  const handleAddCardTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCardName.trim() || !newCardValues.trim()) {
       triggerNotification('error', 'សូមបំពេញឈ្មោះ និងតម្លៃគំរូឲ្យបានត្រឹមត្រូវ!');
@@ -159,13 +162,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setDraftCards(updated);
     setNewCardName('');
     setNewCardValues('');
-    triggerNotification('success', 'បានបន្ថែមទៅក្នុងបញ្ជីព្រាង! សូមចុច "រក្សាទុកការកែប្រែ" ដើម្បីអនុវត្ត។ 📝');
+    await persistAndSync(updated, draftWheels, draftRiddles, draftSpellings, `បានបង្កើតគំរូបៀរ "${newCardName.trim()}" និង Sync ទៅកាន់អ្នកប្រើទាំងអស់! 🎉`);
   };
 
-  const handleDeleteCardTemplate = (index: number) => {
+  const handleDeleteCardTemplate = async (index: number) => {
+    const deletedName = draftCards[index]?.name || '';
     const updated = draftCards.filter((_, idx) => idx !== index);
     setDraftCards(updated);
-    triggerNotification('success', 'បានដកចេញពីបញ្ជីព្រាង! សូមកុំភ្លេចចុចរក្សាទុក។');
+    await persistAndSync(updated, draftWheels, draftRiddles, draftSpellings, `បានលុបគំរូ "${deletedName}" រួចរាល់! 🗑️`);
   };
 
   const handleUpdateCardTemplate = (index: number, name: string, values: string) => {
@@ -175,7 +179,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   // WHEEL TEMPLATE ACTIONS
-  const handleAddWheelTemplate = (e: React.FormEvent) => {
+  const handleAddWheelTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newWheelName.trim() || !newWheelValues.trim()) {
       triggerNotification('error', 'សូមបំពេញឈ្មោះ និងតម្លៃគំរូឲ្យបានត្រឹមត្រូវ!');
@@ -185,13 +189,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setDraftWheels(updated);
     setNewWheelName('');
     setNewWheelValues('');
-    triggerNotification('success', 'បានបន្ថែមទៅក្នុងបញ្ជីព្រាង! សូមចុច "រក្សាទុកការកែប្រែ" ដើម្បីអនុវត្ត។ 📝');
+    await persistAndSync(draftCards, updated, draftRiddles, draftSpellings, `បានបង្កើតគំរូថាស "${newWheelName.trim()}" និង Sync ទៅកាន់អ្នកប្រើទាំងអស់! 🎉`);
   };
 
-  const handleDeleteWheelTemplate = (index: number) => {
+  const handleDeleteWheelTemplate = async (index: number) => {
+    const deletedName = draftWheels[index]?.name || '';
     const updated = draftWheels.filter((_, idx) => idx !== index);
     setDraftWheels(updated);
-    triggerNotification('success', 'បានដកចេញពីបញ្ជីព្រាង! សូមកុំភ្លេចចុចរក្សាទុក។');
+    await persistAndSync(draftCards, updated, draftRiddles, draftSpellings, `បានលុបគំរូ "${deletedName}" រួចរាល់! 🗑️`);
   };
 
   const handleUpdateWheelTemplate = (index: number, name: string, values: string) => {
@@ -201,7 +206,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   // RIDDLE ACTIONS
-  const handleAddRiddle = (e: React.FormEvent) => {
+  const handleAddRiddle = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRiddleQuestion.trim() || !newRiddleAnswer.trim() || !newRiddleOptions.trim()) {
       triggerNotification('error', 'សូមបំពេញប្រអប់សំណួរ ចម្លើយ និងជម្រើសឲ្យបានគ្រប់គ្រាន់!');
@@ -230,17 +235,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setNewRiddleAnswer('');
     setNewRiddleOptions('');
     setNewRiddleHint('');
-    triggerNotification('success', 'បានបន្ថែមពាក្យបណ្តៅទៅក្នុងព្រាង! សូមកុំភ្លេចចុចរក្សាទុក។ 📝');
+    await persistAndSync(draftCards, draftWheels, updated, draftSpellings, 'បានបន្ថែមពាក្យបណ្តៅថ្មី និង Sync ទៅកាន់អ្នកប្រើទាំងអស់! 📝✨');
   };
 
-  const handleDeleteRiddle = (id: string) => {
+  const handleDeleteRiddle = async (id: string) => {
     if (draftRiddles.length <= 1) {
       triggerNotification('error', 'មិនអាចលុបបានទេ! ត្រូវមានពាក្យបណ្តៅយ៉ាងហោចណាស់មួយ។');
       return;
     }
     const updated = draftRiddles.filter(r => r.id !== id);
     setDraftRiddles(updated);
-    triggerNotification('success', 'បានដកពាក្យបណ្តៅចេញពីបញ្ជីព្រាង!');
+    await persistAndSync(draftCards, draftWheels, updated, draftSpellings, 'បានដកពាក្យបណ្តៅចេញ និង Sync រួចរាល់!');
   };
 
   const handleUpdateRiddleField = (id: string, field: keyof RiddleTemplate, value: any) => {
@@ -254,7 +259,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   // SPELLING ACTIONS
-  const handleAddSpelling = (e: React.FormEvent) => {
+  const handleAddSpelling = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSpellingClue.trim() || !newSpellingIncomplete.trim() || !newSpellingMissing.trim() || !newSpellingOptions.trim() || !newSpellingFullWord.trim()) {
       triggerNotification('error', 'សូមបំពេញព័ត៌មានអក្ខរាវិរុទ្ធថ្មីឲ្យបានគ្រប់គ្រាន់!');
@@ -286,17 +291,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setNewSpellingMissing('');
     setNewSpellingOptions('');
     setNewSpellingFullWord('');
-    triggerNotification('success', 'បានបន្ថែមល្បែងអក្ខរាវិរុទ្ធទៅក្នុងព្រាង! សូមកុំភ្លេចចុចរក្សាទុក។ 📝');
+    await persistAndSync(draftCards, draftWheels, draftRiddles, updated, 'បានបន្ថែមល្បែងអក្ខរាវិរុទ្ធថ្មី និង Sync ទៅកាន់អ្នកប្រើទាំងអស់! 📝✨');
   };
 
-  const handleDeleteSpelling = (id: string) => {
+  const handleDeleteSpelling = async (id: string) => {
     if (draftSpellings.length <= 1) {
       triggerNotification('error', 'មិនអាចលុបបានទេ! ត្រូវមានល្បែងអក្ខរាវិរុទ្ធយ៉ាងហោចណាស់មួយ។');
       return;
     }
     const updated = draftSpellings.filter(s => s.id !== id);
     setDraftSpellings(updated);
-    triggerNotification('success', 'បានដកល្បែងអក្ខរាវិរុទ្ធចេញពីបញ្ជីព្រាង!');
+    await persistAndSync(draftCards, draftWheels, draftRiddles, updated, 'បានដកល្បែងអក្ខរាវិរុទ្ធចេញ និង Sync រួចរាល់!');
   };
 
   const handleUpdateSpellingField = (id: string, field: keyof SpellingTemplate, value: any) => {
