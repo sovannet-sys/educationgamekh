@@ -19,30 +19,10 @@ const TEMPLATES_DOC_PATH = 'templates';
 const GLOBAL_DOC_ID = 'global';
 
 /**
- * Fetch global templates from Firebase Firestore first, fallback to Express /api/templates
+ * Fetch global templates from Server API first (authoritative source), fallback to Firebase Firestore
  */
 export async function fetchGlobalTemplates(): Promise<GlobalTemplatesData | null> {
-  // 1. Try Firebase Firestore (Universal Real-time Cloud DB across all devices)
-  try {
-    const docRef = doc(db, TEMPLATES_DOC_PATH, GLOBAL_DOC_ID);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      if (data && (Array.isArray(data.cardTemplates) || Array.isArray(data.wheelTemplates))) {
-        return {
-          cardTemplates: Array.isArray(data.cardTemplates) ? data.cardTemplates : DEFAULT_CARD_TEMPLATES,
-          wheelTemplates: Array.isArray(data.wheelTemplates) ? data.wheelTemplates : DEFAULT_WHEEL_TEMPLATES,
-          riddles: Array.isArray(data.riddles) ? data.riddles : DEFAULT_RIDDLES,
-          spellings: Array.isArray(data.spellings) ? data.spellings : DEFAULT_SPELLINGS,
-          updatedAt: data.updatedAt
-        };
-      }
-    }
-  } catch (firestoreErr) {
-    console.warn("Firestore fetch error/offline, trying server API:", firestoreErr);
-  }
-
-  // 2. Fallback to Express backend /api/templates
+  // 1. Fetch from Express backend /api/templates (Fastest & direct on all devices)
   try {
     const res = await fetch(`/api/templates?_t=${Date.now()}`, {
       cache: 'no-store',
@@ -61,7 +41,7 @@ export async function fetchGlobalTemplates(): Promise<GlobalTemplatesData | null
           spellings: Array.isArray(data.spellings) ? data.spellings : DEFAULT_SPELLINGS,
           updatedAt: data.updatedAt || new Date().toISOString()
         };
-        // Auto-seed to Firestore if possible so mobile/tablets immediately get it
+        // Auto-seed to Firestore if possible for multi-channel backup
         try {
           const docRef = doc(db, TEMPLATES_DOC_PATH, GLOBAL_DOC_ID);
           setDoc(docRef, result, { merge: true }).catch(() => {});
@@ -70,7 +50,27 @@ export async function fetchGlobalTemplates(): Promise<GlobalTemplatesData | null
       }
     }
   } catch (apiErr) {
-    console.warn("API /api/templates fetch error:", apiErr);
+    console.warn("API /api/templates fetch error, checking Firestore:", apiErr);
+  }
+
+  // 2. Fallback to Firebase Firestore
+  try {
+    const docRef = doc(db, TEMPLATES_DOC_PATH, GLOBAL_DOC_ID);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      if (data && (Array.isArray(data.cardTemplates) || Array.isArray(data.wheelTemplates))) {
+        return {
+          cardTemplates: Array.isArray(data.cardTemplates) ? data.cardTemplates : DEFAULT_CARD_TEMPLATES,
+          wheelTemplates: Array.isArray(data.wheelTemplates) ? data.wheelTemplates : DEFAULT_WHEEL_TEMPLATES,
+          riddles: Array.isArray(data.riddles) ? data.riddles : DEFAULT_RIDDLES,
+          spellings: Array.isArray(data.spellings) ? data.spellings : DEFAULT_SPELLINGS,
+          updatedAt: data.updatedAt
+        };
+      }
+    }
+  } catch (firestoreErr) {
+    console.warn("Firestore fetch error/offline:", firestoreErr);
   }
 
   return {
@@ -83,7 +83,7 @@ export async function fetchGlobalTemplates(): Promise<GlobalTemplatesData | null
 }
 
 /**
- * Save global templates to both Firebase Firestore and Express /api/templates
+ * Save global templates to both Express server /api/templates and Firebase Firestore
  * This guarantees that mobile phones, tablets, student accounts, and web clients
  * receive the updated templates immediately in real time.
  */
@@ -99,17 +99,7 @@ export async function saveGlobalTemplates(data: GlobalTemplatesData): Promise<{ 
   let firestoreSuccess = false;
   let apiSuccess = false;
 
-  // 1. Save to Cloud Firestore
-  try {
-    const docRef = doc(db, TEMPLATES_DOC_PATH, GLOBAL_DOC_ID);
-    await setDoc(docRef, payload, { merge: true });
-    firestoreSuccess = true;
-    console.log("Templates successfully synchronized to Cloud Firestore! ☁️");
-  } catch (firestoreErr) {
-    console.warn("Warning writing to Firestore /templates/global:", firestoreErr);
-  }
-
-  // 2. Save to Express server API
+  // 1. Save to Express server API (Broadcasts immediately via SSE to all connected devices)
   try {
     const res = await fetch('/api/templates', {
       method: 'POST',
@@ -121,10 +111,20 @@ export async function saveGlobalTemplates(data: GlobalTemplatesData): Promise<{ 
     });
     if (res.ok) {
       apiSuccess = true;
-      console.log("Templates successfully synchronized to Server API! 🚀");
+      console.log("Templates successfully synchronized to Server API & SSE Stream! 🚀");
     }
   } catch (apiErr) {
     console.warn("Warning writing to server /api/templates:", apiErr);
+  }
+
+  // 2. Save to Cloud Firestore
+  try {
+    const docRef = doc(db, TEMPLATES_DOC_PATH, GLOBAL_DOC_ID);
+    await setDoc(docRef, payload, { merge: true });
+    firestoreSuccess = true;
+    console.log("Templates successfully synchronized to Cloud Firestore! ☁️");
+  } catch (firestoreErr) {
+    console.warn("Warning writing to Firestore /templates/global:", firestoreErr);
   }
 
   return { firestore: firestoreSuccess, api: apiSuccess };
@@ -132,8 +132,8 @@ export async function saveGlobalTemplates(data: GlobalTemplatesData): Promise<{ 
 
 /**
  * Subscribe to real-time updates for global shared templates.
- * Uses Firebase Firestore onSnapshot listener for instant cross-device updates (Mobile/Tablet/PC)
- * with an auxiliary background refresh and tab-focus listener.
+ * Uses Server-Sent Events (SSE) `/api/templates/stream` for instant real-time push,
+ * paired with Firestore onSnapshot and periodic synchronization on device wake-up.
  */
 export function subscribeToGlobalTemplates(
   onUpdate: (data: GlobalTemplatesData) => void,
@@ -163,7 +163,41 @@ export function subscribeToGlobalTemplates(
     }
   }).catch(console.warn);
 
-  // 1. Firestore real-time listener (Instant push to all connected mobiles/tablets/desktops)
+  // 1. Native Server-Sent Events (SSE) Stream for Instant Cross-Device Sync
+  let eventSource: EventSource | null = null;
+  try {
+    eventSource = new EventSource('/api/templates/stream');
+    eventSource.onmessage = (event) => {
+      if (!isSubscribed) return;
+      try {
+        const raw = JSON.parse(event.data);
+        if (raw && (Array.isArray(raw.cardTemplates) || Array.isArray(raw.wheelTemplates))) {
+          processUpdate({
+            cardTemplates: Array.isArray(raw.cardTemplates) ? raw.cardTemplates : DEFAULT_CARD_TEMPLATES,
+            wheelTemplates: Array.isArray(raw.wheelTemplates) ? raw.wheelTemplates : DEFAULT_WHEEL_TEMPLATES,
+            riddles: Array.isArray(raw.riddles) ? raw.riddles : DEFAULT_RIDDLES,
+            spellings: Array.isArray(raw.spellings) ? raw.spellings : DEFAULT_SPELLINGS,
+            updatedAt: raw.updatedAt
+          });
+        }
+      } catch (parseErr) {
+        console.warn("SSE parse error:", parseErr);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      // SSE auto-reconnects, but trigger fallback fetch in meantime
+      if (isSubscribed) {
+        fetchGlobalTemplates().then(data => {
+          if (isSubscribed && data) processUpdate(data);
+        }).catch(() => {});
+      }
+    };
+  } catch (sseErr) {
+    console.warn("EventSource setup failed, falling back to Firestore & polling:", sseErr);
+  }
+
+  // 2. Firestore real-time listener as secondary channel
   let unsubscribeFirestore: (() => void) | null = null;
   try {
     const docRef = doc(db, TEMPLATES_DOC_PATH, GLOBAL_DOC_ID);
@@ -182,17 +216,9 @@ export function subscribeToGlobalTemplates(
               updatedAt: data.updatedAt
             });
           }
-        } else {
-          // Document does not exist in Firestore yet, fetch from /api/templates and seed Firestore
-          fetchGlobalTemplates().then((apiData) => {
-            if (isSubscribed && apiData) {
-              processUpdate(apiData);
-            }
-          }).catch(console.warn);
         }
       },
       (error) => {
-        console.warn("Firestore onSnapshot error, maintaining API sync:", error);
         if (onError) onError(error);
       }
     );
@@ -200,7 +226,7 @@ export function subscribeToGlobalTemplates(
     console.warn("Error setting up Firestore snapshot listener:", err);
   }
 
-  // 2. Polling fallback to keep mobile/tablets synchronized even if WebSocket sleeps
+  // 3. Fast polling fallback (every 2 seconds) to guarantee sync across device networks
   const pollInterval = setInterval(async () => {
     if (!isSubscribed) return;
     try {
@@ -209,9 +235,9 @@ export function subscribeToGlobalTemplates(
         processUpdate(data);
       }
     } catch {}
-  }, 2500);
+  }, 2000);
 
-  // 3. Tab visibility / device wake-up sync
+  // 4. Tab visibility / device wake-up sync (Instant update when user unlocks phone or switches tab)
   const handleVisibilityOrOnline = () => {
     if (!isSubscribed) return;
     fetchGlobalTemplates().then(data => {
@@ -227,6 +253,9 @@ export function subscribeToGlobalTemplates(
 
   return () => {
     isSubscribed = false;
+    if (eventSource) {
+      eventSource.close();
+    }
     clearInterval(pollInterval);
     window.removeEventListener('visibilitychange', handleVisibilityOrOnline);
     window.removeEventListener('focus', handleVisibilityOrOnline);

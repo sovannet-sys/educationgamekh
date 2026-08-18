@@ -125,6 +125,19 @@ function readTemplatesFromFile() {
   }
 }
 
+let sseClients: express.Response[] = [];
+
+function broadcastTemplates(data: any) {
+  const payload = `data: ${JSON.stringify(data)}\n\n`;
+  sseClients.forEach(res => {
+    try {
+      res.write(payload);
+    } catch {
+      // Ignored - will be cleaned up on close
+    }
+  });
+}
+
 function writeTemplatesToFile(data: any) {
   try {
     if (!fs.existsSync(DATA_DIR)) {
@@ -139,6 +152,7 @@ function writeTemplatesToFile(data: any) {
       updatedAt: new Date().toISOString()
     };
     fs.writeFileSync(TEMPLATES_FILE, JSON.stringify(payload, null, 2), "utf-8");
+    broadcastTemplates(payload);
     return payload;
   } catch (err) {
     console.error("Error writing templates file:", err);
@@ -150,6 +164,35 @@ async function startServer() {
   // 1. API Routes
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
+  // Server-Sent Events (SSE) for Real-Time synchronization across all devices
+  app.get("/api/templates/stream", (req, res) => {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders();
+
+    // Send initial data immediately
+    const initialData = readTemplatesFromFile();
+    res.write(`data: ${JSON.stringify(initialData)}\n\n`);
+
+    sseClients.push(res);
+
+    // Keep connection alive with ping every 15s
+    const keepAliveTimer = setInterval(() => {
+      try {
+        res.write(": keepalive\n\n");
+      } catch {
+        clearInterval(keepAliveTimer);
+      }
+    }, 15000);
+
+    req.on("close", () => {
+      clearInterval(keepAliveTimer);
+      sseClients = sseClients.filter(c => c !== res);
+    });
   });
 
   app.get("/api/templates", (_req, res) => {
