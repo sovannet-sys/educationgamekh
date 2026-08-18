@@ -9,7 +9,7 @@ import { KhmerGame } from './components/KhmerGame';
 import { AdminDashboard } from './components/AdminDashboard';
 import { 
   Calculator, Sparkles, HelpCircle, Layers, Compass, 
-  GraduationCap, Laptop, BookOpen, Settings, LogOut, User as UserIcon, Loader2
+  GraduationCap, Laptop, BookOpen, Settings, LogOut, LogIn, User as UserIcon, Loader2
 } from 'lucide-react';
 import { 
   CardTemplate, WheelTemplate, RiddleTemplate, SpellingTemplate,
@@ -325,13 +325,25 @@ export default function App() {
                 Sync...
               </span>
             )}
+
+            {!user && isGuest && (
+              <button
+                onClick={() => setIsGuest(false)}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 text-indigo-700 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                title="ចូលគណនីដើម្បីរក្សាទុកទិន្នន័យ"
+                id="btn-navbar-signin"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>ចូលគណនី</span>
+              </button>
+            )}
             
             {(user || isGuest) && (
               <div className="relative">
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className="flex items-center justify-center p-0.5 rounded-2xl hover:scale-105 active:scale-95 transition-all focus:outline-none cursor-pointer"
-                  title={user ? (user.displayName || 'ប្រវត្តិរូប') : 'ភ្ញៀវ'}
+                  title={user ? (user.displayName || 'ប្រវត្តិរូប') : 'ភ្ញៀវ - ចុចដើម្បីចូលគណនី ឬចាកចេញ'}
                   id="user-avatar-btn"
                 >
                   {user ? (
@@ -385,7 +397,9 @@ export default function App() {
                               <UserIcon className="w-6 h-6" />
                             </div>
                             <h4 className="text-sm font-black text-gray-800 tracking-tight">ភ្ញៀវ (Guest)</h4>
-                            <p className="text-[11px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-lg mt-1">របៀបភ្ញៀវ</p>
+                            <p className="text-[11px] text-amber-600 font-bold bg-amber-50 px-2.5 py-0.5 rounded-lg mt-1">
+                              កំពុងប្រើប្រាស់របៀបភ្ញៀវ
+                            </p>
                           </>
                         )}
                       </div>
@@ -396,14 +410,33 @@ export default function App() {
                             setIsUserMenuOpen(false);
                             handleSignOut();
                           }}
-                          className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                          className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
                           id="btn-dropdown-signout"
                         >
                           <LogOut className="w-4 h-4" /> ចាកចេញ (Sign Out)
                         </button>
                       ) : (
-                        <div className="text-center p-2.5 bg-gray-50 border border-gray-100 rounded-xl text-[10px] sm:text-xs text-gray-400 font-bold leading-relaxed">
-                          មុខងារចូលគណនីត្រូវបានបិទបណ្ដោះអាសន្ន។ អ្នកកំពុងប្រើប្រាស់របៀបភ្ញៀវ!
+                        <div className="space-y-2">
+                          <button
+                            onClick={() => {
+                              setIsUserMenuOpen(false);
+                              setIsGuest(false);
+                            }}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-100 transition-all cursor-pointer"
+                            id="btn-dropdown-guest-signin"
+                          >
+                            <LogIn className="w-4 h-4" /> ចូលគណនី (Sign In)
+                          </button>
+                          <button
+                            onClick={() => {
+                              setIsUserMenuOpen(false);
+                              setIsGuest(false);
+                            }}
+                            className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                            id="btn-dropdown-guest-exit"
+                          >
+                            <LogOut className="w-3.5 h-3.5 text-gray-500" /> ចាកចេញពីរបៀបភ្ញៀវ
+                          </button>
                         </div>
                       )}
                     </div>
