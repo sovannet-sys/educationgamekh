@@ -1161,24 +1161,27 @@ export const KhmerGame: React.FC<KhmerGameProps> = ({
             <div className={`lg:col-span-8 flex flex-col justify-between bg-gray-50/50 rounded-2xl p-6 min-h-[300px] ${mobileActiveView === 'game' ? 'flex' : 'hidden lg:flex'}`} id="khmer-game-right-panel">
             
             {/* RIDDLE MODE */}
-            {khmerMode === 'riddle' && (
+            {khmerMode === 'riddle' && (() => {
+              const safeRiddleIdx = RIDDLES.length > 0 ? (riddleIndex % RIDDLES.length) : 0;
+              const currentRiddle = RIDDLES[safeRiddleIdx] || DEFAULT_RIDDLES[0];
+              return (
               <div className="flex-1 flex flex-col justify-between">
                 {/* Question container */}
                 <div className="text-center py-4">
                   <div className="flex justify-center mb-2">
                     <span className="px-3 py-1 bg-violet-100 text-violet-700 rounded-full text-[10px] font-black uppercase tracking-wider">
-                      ពាក្យបណ្តៅទី {riddleIndex + 1}
+                      ពាក្យបណ្តៅទី {safeRiddleIdx + 1}
                     </span>
                   </div>
                   <h3 className="text-lg sm:text-xl font-extrabold text-gray-800 leading-relaxed max-w-lg mx-auto">
-                    « {RIDDLES[riddleIndex].question} »
+                    « {currentRiddle.question} »
                   </h3>
                 </div>
 
                 {/* Multiple Choice Options */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 my-4">
-                  {RIDDLES[riddleIndex].options.map((option, idx) => {
-                    const isCorrectAnswer = option === RIDDLES[riddleIndex].answer;
+                  {currentRiddle.options.map((option, idx) => {
+                    const isCorrectAnswer = option === currentRiddle.answer;
                     const isThisSelected = option === selectedOption;
 
                     let btnStyle = 'bg-white border-gray-200 hover:border-violet-300 text-gray-700';
@@ -1197,7 +1200,7 @@ export const KhmerGame: React.FC<KhmerGameProps> = ({
                         key={idx}
                         whileHover={!isAnswered ? { scale: 1.02 } : {}}
                         whileTap={!isAnswered ? { scale: 0.98 } : {}}
-                        onClick={() => handleAnswerSubmit(option, RIDDLES[riddleIndex].answer, 'riddle')}
+                        onClick={() => handleAnswerSubmit(option, currentRiddle.answer, 'riddle')}
                         disabled={isAnswered}
                         className={`py-3.5 px-4 rounded-xl border text-sm font-semibold transition-all shadow-2xs ${btnStyle}`}
                       >
@@ -1218,7 +1221,7 @@ export const KhmerGame: React.FC<KhmerGameProps> = ({
                     </button>
                     {showHint && (
                       <span className="text-xs text-gray-500 italic max-w-[250px] truncate">
-                        {RIDDLES[riddleIndex].hint}
+                        {currentRiddle.hint}
                       </span>
                     )}
                   </div>
@@ -1243,40 +1246,44 @@ export const KhmerGame: React.FC<KhmerGameProps> = ({
                   )}
                 </div>
               </div>
-            )}
+              );
+            })()}
 
             {/* SPELLING FILL-IN-THE-BLANK MODE */}
-            {khmerMode === 'spelling' && (
+            {khmerMode === 'spelling' && (() => {
+              const safeSpellIdx = SPELLINGS.length > 0 ? (spellingIndex % SPELLINGS.length) : 0;
+              const currentSpelling = SPELLINGS[safeSpellIdx] || DEFAULT_SPELLINGS[0];
+              return (
               <div className="flex-1 flex flex-col justify-between">
                 <div className="text-center py-4">
                   <div className="flex justify-center mb-2">
                     <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-[10px] font-black uppercase tracking-wider">
-                      បំពេញតួអក្សរទី {spellingIndex + 1}
+                      បំពេញតួអក្សរទី {safeSpellIdx + 1}
                     </span>
                   </div>
                   {/* Clue and Incomplete Word */}
                   <p className="text-xs text-gray-400 mb-4 italic max-w-md mx-auto">
-                    តម្រុយ៖ "{SPELLINGS[spellingIndex].clue}"
+                    តម្រុយ៖ "{currentSpelling.clue}"
                   </p>
                   
                   {/* Display equation of incomplete word */}
                   <div className="inline-flex items-center justify-center gap-2 bg-white px-8 py-4 rounded-3xl border border-indigo-50 shadow-xs">
                     <span className="text-3xl font-black text-gray-800 tracking-wide font-sans">
-                      {SPELLINGS[spellingIndex].incomplete.split('_')[0]}
+                      {currentSpelling.incomplete.split('_')[0]}
                     </span>
                     <span className="text-3xl font-black text-red-500 animate-pulse border-b-4 border-red-400 px-2 min-w-[50px] text-center">
-                      {isAnswered ? SPELLINGS[spellingIndex].missing : '?'}
+                      {isAnswered ? currentSpelling.missing : '?'}
                     </span>
                     <span className="text-3xl font-black text-gray-800 tracking-wide font-sans">
-                      {SPELLINGS[spellingIndex].incomplete.split('_')[1] || ''}
+                      {currentSpelling.incomplete.split('_')[1] || ''}
                     </span>
                   </div>
                 </div>
 
                 {/* Options of missing syllable */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
-                  {SPELLINGS[spellingIndex].options.map((option, idx) => {
-                    const isCorrect = option === SPELLINGS[spellingIndex].missing;
+                  {currentSpelling.options.map((option, idx) => {
+                    const isCorrect = option === currentSpelling.missing;
                     const isSelected = option === selectedOption;
 
                     let btnStyle = 'bg-white border-gray-200 hover:border-indigo-300 text-gray-700 text-lg';
@@ -1295,7 +1302,7 @@ export const KhmerGame: React.FC<KhmerGameProps> = ({
                         key={idx}
                         whileHover={!isAnswered ? { scale: 1.03 } : {}}
                         whileTap={!isAnswered ? { scale: 0.97 } : {}}
-                        onClick={() => handleAnswerSubmit(option, SPELLINGS[spellingIndex].missing, 'spelling')}
+                        onClick={() => handleAnswerSubmit(option, currentSpelling.missing, 'spelling')}
                         disabled={isAnswered}
                         className={`py-3 rounded-2xl border font-bold transition-all shadow-2xs ${btnStyle}`}
                       >
@@ -1314,7 +1321,7 @@ export const KhmerGame: React.FC<KhmerGameProps> = ({
                       className="flex items-center gap-3"
                     >
                       <span className="text-xs text-gray-500">
-                        ពាក្យពេញលេញ៖ <strong className="text-indigo-600 underline font-sans">{SPELLINGS[spellingIndex].fullWord}</strong>
+                        ពាក្យពេញលេញ៖ <strong className="text-indigo-600 underline font-sans">{currentSpelling.fullWord}</strong>
                       </span>
                       <span className={`text-xs font-black ${feedback.isCorrect ? 'text-emerald-600' : 'text-red-500'}`}>
                         {feedback.msg}
@@ -1329,7 +1336,8 @@ export const KhmerGame: React.FC<KhmerGameProps> = ({
                   )}
                 </div>
               </div>
-            )}
+              );
+            })()}
 
             {/* WORD ASSEMBLY MODE */}
             {khmerMode === 'assembly' && (() => {

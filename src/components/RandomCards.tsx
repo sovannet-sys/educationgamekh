@@ -77,14 +77,12 @@ export const RandomCards: React.FC<RandomCardsProps> = ({
       const idx = parseInt(selectedTemplateIndex, 10);
       if (templates[idx]) {
         handleApplyTemplate(templates[idx].values);
-      } else {
+      } else if (templates.length > 0) {
         setSelectedTemplateIndex('0');
-        if (templates[0]) {
-          handleApplyTemplate(templates[0].values);
-        }
+        handleApplyTemplate(templates[0].values);
       }
     }
-  }, [templates]);
+  }, [templates, selectedTemplateIndex]);
 
   // Handle template selection change
   const handleTemplateDropdownChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
