@@ -195,10 +195,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       localStorage.setItem('custom_riddles', JSON.stringify(freshData.riddles));
       localStorage.setItem('custom_spellings', JSON.stringify(freshData.spellings));
 
-      triggerNotification('success', 'បានទាញយកទិន្នន័យពី Cloud (Firestore) ឡើងវិញ និង Sync ទៅកាន់គ្រប់ Client រួចរាល់! 🔄☁️✨');
+      triggerNotification('success', 'បានធ្វើបច្ចុប្បន្នភាពគំរូពី Cloud (Firestore) និង Sync ទៅកាន់គ្រប់ Client រួចរាល់! 🔄☁️✨');
     } catch (err: any) {
       console.error("Force refresh error:", err);
-      triggerNotification('error', 'ការទាញយកពី Cloud បរាជ័យ៖ ' + (err.message || 'សូមព្យាយាមម្ដងទៀត'));
+      triggerNotification('error', 'ការធ្វើបច្ចុប្បន្នភាពគំរូបរាជ័យ៖ ' + (err.message || 'សូមព្យាយាមម្ដងទៀត'));
     } finally {
       setIsForceRefreshing(false);
     }
@@ -464,11 +464,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             onClick={handleForceRefresh}
             disabled={isForceRefreshing || isSaving}
             className="px-3.5 py-2.5 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
-            title="ទាញយកទិន្នន័យឡើងវិញពី Cloud Firestore និងធ្វើសមកាលកម្មទៅកាន់គ្រប់ Client"
+            title="ធ្វើបច្ចុប្បន្នភាពទិន្នន័យគំរូពី Cloud Firestore និងធ្វើសមកាលកម្មទៅកាន់គ្រប់ឧបករណ៍ទាំងអស់"
             id="admin-force-refresh-btn"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isForceRefreshing ? 'animate-spin text-indigo-600' : ''}`} />
-            {isForceRefreshing ? 'កំពុងទាញយក...' : 'ទាញយកឡើងវិញ (Force Refresh)'}
+            {isForceRefreshing ? 'កំពុងធ្វើបច្ចុប្បន្នភាព...' : 'ធ្វើបច្ចុប្បន្នភាពគំរូ'}
           </button>
 
           <button

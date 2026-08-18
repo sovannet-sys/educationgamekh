@@ -238,6 +238,26 @@ export default function App() {
     setSpellings(DEFAULT_SPELLINGS);
   };
 
+  const isGuestMode = !user || isGuest;
+
+  // In Guest Mode: do not show templates created by Admin.
+  // Only show 1 single default template + custom option (កំណត់ខ្លួនឯង).
+  const activeCardTemplates = isGuestMode
+    ? [DEFAULT_CARD_TEMPLATES[0] || { name: 'គំរូស្រាប់ (២-២០)', values: '2, 4, 6, 8, 10, 12, 14, 16, 18, 20' }]
+    : cardTemplates;
+
+  const activeWheelTemplates = isGuestMode
+    ? [DEFAULT_WHEEL_TEMPLATES[0] || { name: 'គំរូស្រាប់ (+, -, ×, ÷)', values: '+, -, ×, ÷' }]
+    : wheelTemplates;
+
+  const activeRiddles = isGuestMode
+    ? DEFAULT_RIDDLES.slice(0, 3)
+    : riddles;
+
+  const activeSpellings = isGuestMode
+    ? DEFAULT_SPELLINGS.slice(0, 3)
+    : spellings;
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-[#FAF9F6] flex items-center justify-center" id="auth-loading">
@@ -455,8 +475,8 @@ export default function App() {
         {activeMainTab === 'math' && (
           <section id="math-practice-section" className="w-full animate-fade-in">
             <MathPractice 
-              cardTemplates={cardTemplates}
-              wheelTemplates={wheelTemplates}
+              cardTemplates={activeCardTemplates}
+              wheelTemplates={activeWheelTemplates}
               practiceMode={mathPracticeMode}
               setPracticeMode={setMathPracticeMode}
               isAdmin={isAdmin}
@@ -471,10 +491,10 @@ export default function App() {
         {activeMainTab === 'khmer' && (
           <section id="khmer-game-section" className="w-full animate-fade-in">
             <KhmerGame 
-              cardTemplates={cardTemplates}
-              wheelTemplates={wheelTemplates}
-              customRiddles={riddles}
-              customSpellings={spellings}
+              cardTemplates={activeCardTemplates}
+              wheelTemplates={activeWheelTemplates}
+              customRiddles={activeRiddles}
+              customSpellings={activeSpellings}
               khmerMode={khmerGameMode}
               setKhmerMode={setKhmerGameMode}
               isAdmin={isAdmin}

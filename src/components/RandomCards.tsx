@@ -386,7 +386,7 @@ export const RandomCards: React.FC<RandomCardsProps> = ({
                 {tpl.name}
               </option>
             ))}
-            <option value="custom">✍️ បញ្ចូលដោយដៃ (កំណត់ផ្ទាល់ខ្លួន)</option>
+            <option value="custom">✍️ កំណត់ខ្លួនឯង (បញ្ចូលដោយដៃ)</option>
           </select>
 
           {/* Delete Template Button (Admin only) */}

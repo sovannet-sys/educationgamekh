@@ -1017,7 +1017,7 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
                               {tpl.name}
                             </option>
                           ))}
-                          <option value="custom">✍️ បញ្ចូលដោយដៃ (កំណត់ផ្ទាល់ខ្លួន)</option>
+                          <option value="custom">✍️ កំណត់ខ្លួនឯង (បញ្ចូលដោយដៃ)</option>
                         </select>
 
                         {/* Delete template button if admin and selected */}
@@ -1106,7 +1106,7 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
                               {tpl.name}
                             </option>
                           ))}
-                          <option value="custom">✍️ កំណត់ផ្ទាល់ខ្លួន</option>
+                          <option value="custom">✍️ កំណត់ខ្លួនឯង (បញ្ចូលដោយដៃ)</option>
                         </select>
 
                         {selectedTemplateIndex === 'custom' ? (
@@ -1147,7 +1147,7 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
                               {tpl.name}
                             </option>
                           ))}
-                          <option value="custom">✍️ កំណត់ផ្ទាល់ខ្លួន</option>
+                          <option value="custom">✍️ កំណត់ខ្លួនឯង (បញ្ចូលដោយដៃ)</option>
                         </select>
 
                         {selectedTemplateIndex2 === 'custom' ? (
