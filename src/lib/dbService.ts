@@ -97,9 +97,27 @@ export interface GlobalTemplatesData {
 }
 
 /**
- * Fetch global templates from Firestore.
+ * Fetch global templates from backend server /api/templates, with Firestore fallback.
  */
 export async function fetchGlobalTemplates(): Promise<GlobalTemplatesData | null> {
+  try {
+    const res = await fetch('/api/templates');
+    if (res.ok) {
+      const data = await res.json();
+      if (data && (data.cardTemplates || data.wheelTemplates)) {
+        return {
+          cardTemplates: data.cardTemplates || [],
+          wheelTemplates: data.wheelTemplates || [],
+          riddles: data.riddles || [],
+          spellings: data.spellings || []
+        };
+      }
+    }
+  } catch (apiErr) {
+    console.warn("API /api/templates fetch failed, trying Firestore fallback:", apiErr);
+  }
+
+  // Fallback to Firestore
   const path = 'templates/global';
   try {
     const docRef = doc(db, 'templates', 'global');
@@ -119,15 +137,30 @@ export async function fetchGlobalTemplates(): Promise<GlobalTemplatesData | null
       console.warn("Firestore is offline or unreachable. Falling back to local cache gracefully.");
       return null;
     }
-    handleFirestoreError(error, OperationType.GET, path);
     return null;
   }
 }
 
 /**
- * Save global templates to Firestore.
+ * Save global templates to backend server /api/templates and Firestore.
  */
 export async function saveGlobalTemplates(data: GlobalTemplatesData): Promise<void> {
+  let savedToApi = false;
+  try {
+    const res = await fetch('/api/templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (res.ok) {
+      savedToApi = true;
+      console.log("Successfully saved global templates to backend API /api/templates");
+    }
+  } catch (apiErr) {
+    console.warn("Could not save to /api/templates:", apiErr);
+  }
+
+  // Also sync to Firestore
   const path = 'templates/global';
   try {
     const docRef = doc(db, 'templates', 'global');
@@ -137,43 +170,81 @@ export async function saveGlobalTemplates(data: GlobalTemplatesData): Promise<vo
     });
     console.log("Successfully saved global templates to Firestore.");
   } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, path);
+    if (!savedToApi) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+    } else {
+      console.warn("Firestore save warning (API save succeeded):", error);
+    }
   }
 }
 
 /**
  * Subscribe to real-time updates for global shared templates.
- * This ensures that whenever an admin creates, updates, or deletes a template,
- * all active clients (students, teachers, guests) immediately receive the latest templates.
+ * Listens to Firestore onSnapshot AND polls /api/templates so all users receive updates immediately.
  */
 export function subscribeToGlobalTemplates(
   onUpdate: (data: GlobalTemplatesData) => void,
   onError?: (error: any) => void
 ): Unsubscribe {
-  const path = 'templates/global';
-  const docRef = doc(db, 'templates', 'global');
-  
-  return onSnapshot(
-    docRef,
-    (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        onUpdate({
-          cardTemplates: data.cardTemplates || [],
-          wheelTemplates: data.wheelTemplates || [],
-          riddles: data.riddles || [],
-          spellings: data.spellings || []
-        });
+  let lastJson = '';
+
+  const checkApi = async () => {
+    try {
+      const data = await fetchGlobalTemplates();
+      if (data) {
+        const jsonStr = JSON.stringify(data);
+        if (jsonStr !== lastJson) {
+          lastJson = jsonStr;
+          onUpdate(data);
+        }
       }
-    },
-    (error) => {
-      if (isOfflineError(error)) {
-        console.warn("Firestore listener is offline. Using local template cache.");
-      } else {
-        console.warn("Firestore snapshot subscription error:", error);
-      }
-      if (onError) onError(error);
+    } catch (e) {
+      // ignore
     }
-  );
+  };
+
+  // Immediate initial load
+  checkApi();
+
+  // Periodic poll every 3 seconds for zero-delay synchronization across all guest/student devices
+  const intervalId = setInterval(checkApi, 3000);
+
+  // Firestore listener
+  let unsubscribeFirestore: Unsubscribe = () => {};
+  try {
+    const docRef = doc(db, 'templates', 'global');
+    unsubscribeFirestore = onSnapshot(
+      docRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const parsed: GlobalTemplatesData = {
+            cardTemplates: data.cardTemplates || [],
+            wheelTemplates: data.wheelTemplates || [],
+            riddles: data.riddles || [],
+            spellings: data.spellings || []
+          };
+          const jsonStr = JSON.stringify(parsed);
+          if (jsonStr !== lastJson) {
+            lastJson = jsonStr;
+            onUpdate(parsed);
+          }
+        }
+      },
+      (error) => {
+        if (isOfflineError(error)) {
+          console.warn("Firestore listener operating offline.");
+        }
+        if (onError) onError(error);
+      }
+    );
+  } catch (e) {
+    console.warn("Firestore listener setup error:", e);
+  }
+
+  return () => {
+    clearInterval(intervalId);
+    unsubscribeFirestore();
+  };
 }
 
