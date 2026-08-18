@@ -154,6 +154,9 @@ async function startServer() {
 
   app.get("/api/templates", (_req, res) => {
     try {
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
       const templates = readTemplatesFromFile();
       res.json(templates);
     } catch (error: any) {
@@ -163,6 +166,9 @@ async function startServer() {
 
   app.post("/api/templates", (req, res) => {
     try {
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
       const updated = writeTemplatesToFile(req.body);
       res.json({ success: true, templates: updated });
     } catch (error: any) {
