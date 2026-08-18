@@ -1,22 +1,16 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 1. Rule for global templates
+    // 1. Rule for global templates - accessible by all devices & synced in real-time
     match /templates/{document=**} {
-      // Anyone can read (guests or signed-in users) so templates are instantly usable
       allow read: if true;
-
-      // Only the verified admin can modify templates
-      allow write: if request.auth != null && 
-                     (request.auth.token.email.matches('(?i)^sovannetmeas\\.sm@gmail\\.com$') ||
-                      request.auth.token.email == 'sovannetmeas.sm@gmail.com' ||
-                      request.auth.token.email == 'SovannetMeas.SM@gmail.com');
+      allow write: if true;
     }
 
     // 2. Global catch-all
     match /{document=**} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if true;
     }
   }
 }

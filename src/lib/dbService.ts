@@ -22,7 +22,7 @@ const GLOBAL_DOC_ID = 'global';
  * Fetch global templates from Firebase Firestore first, fallback to Express /api/templates
  */
 export async function fetchGlobalTemplates(): Promise<GlobalTemplatesData | null> {
-  // 1. Try Firebase Firestore (Universal Real-time Cloud DB for all devices)
+  // 1. Try Firebase Firestore (Universal Real-time Cloud DB across all devices)
   try {
     const docRef = doc(db, TEMPLATES_DOC_PATH, GLOBAL_DOC_ID);
     const docSnap = await getDoc(docRef);
@@ -39,7 +39,7 @@ export async function fetchGlobalTemplates(): Promise<GlobalTemplatesData | null
       }
     }
   } catch (firestoreErr) {
-    console.warn("Firestore fetch notice (falling back to API):", firestoreErr);
+    console.warn("Firestore fetch error/offline, trying server API:", firestoreErr);
   }
 
   // 2. Fallback to Express backend /api/templates
@@ -59,9 +59,9 @@ export async function fetchGlobalTemplates(): Promise<GlobalTemplatesData | null
           wheelTemplates: Array.isArray(data.wheelTemplates) ? data.wheelTemplates : DEFAULT_WHEEL_TEMPLATES,
           riddles: Array.isArray(data.riddles) ? data.riddles : DEFAULT_RIDDLES,
           spellings: Array.isArray(data.spellings) ? data.spellings : DEFAULT_SPELLINGS,
-          updatedAt: data.updatedAt
+          updatedAt: data.updatedAt || new Date().toISOString()
         };
-        // Auto-seed to Firestore if possible so mobile/tablets immediately sync
+        // Auto-seed to Firestore if possible so mobile/tablets immediately get it
         try {
           const docRef = doc(db, TEMPLATES_DOC_PATH, GLOBAL_DOC_ID);
           setDoc(docRef, result, { merge: true }).catch(() => {});
@@ -73,7 +73,13 @@ export async function fetchGlobalTemplates(): Promise<GlobalTemplatesData | null
     console.warn("API /api/templates fetch error:", apiErr);
   }
 
-  return null;
+  return {
+    cardTemplates: DEFAULT_CARD_TEMPLATES,
+    wheelTemplates: DEFAULT_WHEEL_TEMPLATES,
+    riddles: DEFAULT_RIDDLES,
+    spellings: DEFAULT_SPELLINGS,
+    updatedAt: new Date().toISOString()
+  };
 }
 
 /**
@@ -81,7 +87,7 @@ export async function fetchGlobalTemplates(): Promise<GlobalTemplatesData | null
  * This guarantees that mobile phones, tablets, student accounts, and web clients
  * receive the updated templates immediately in real time.
  */
-export async function saveGlobalTemplates(data: GlobalTemplatesData): Promise<void> {
+export async function saveGlobalTemplates(data: GlobalTemplatesData): Promise<{ firestore: boolean; api: boolean }> {
   const payload = {
     cardTemplates: data.cardTemplates || [],
     wheelTemplates: data.wheelTemplates || [],
@@ -98,6 +104,7 @@ export async function saveGlobalTemplates(data: GlobalTemplatesData): Promise<vo
     const docRef = doc(db, TEMPLATES_DOC_PATH, GLOBAL_DOC_ID);
     await setDoc(docRef, payload, { merge: true });
     firestoreSuccess = true;
+    console.log("Templates successfully synchronized to Cloud Firestore! ☁️");
   } catch (firestoreErr) {
     console.warn("Warning writing to Firestore /templates/global:", firestoreErr);
   }
@@ -114,30 +121,29 @@ export async function saveGlobalTemplates(data: GlobalTemplatesData): Promise<vo
     });
     if (res.ok) {
       apiSuccess = true;
+      console.log("Templates successfully synchronized to Server API! 🚀");
     }
   } catch (apiErr) {
     console.warn("Warning writing to server /api/templates:", apiErr);
   }
 
-  if (!firestoreSuccess && !apiSuccess) {
-    throw new Error("Failed to save templates to both Cloud Firestore and server storage.");
-  }
+  return { firestore: firestoreSuccess, api: apiSuccess };
 }
 
 /**
  * Subscribe to real-time updates for global shared templates.
  * Uses Firebase Firestore onSnapshot listener for instant cross-device updates (Mobile/Tablet/PC)
- * with a fallback polling mechanism to Express /api/templates.
+ * with an auxiliary background refresh and tab-focus listener.
  */
 export function subscribeToGlobalTemplates(
   onUpdate: (data: GlobalTemplatesData) => void,
   onError?: (error: any) => void
 ): Unsubscribe {
   let isSubscribed = true;
-  let firestoreHasData = false;
   let lastJson = '';
 
   const processUpdate = (data: GlobalTemplatesData) => {
+    if (!data) return;
     const jsonStr = JSON.stringify({
       cards: data.cardTemplates,
       wheels: data.wheelTemplates,
@@ -150,6 +156,13 @@ export function subscribeToGlobalTemplates(
     }
   };
 
+  // Immediate initial load
+  fetchGlobalTemplates().then(data => {
+    if (isSubscribed && data) {
+      processUpdate(data);
+    }
+  }).catch(console.warn);
+
   // 1. Firestore real-time listener (Instant push to all connected mobiles/tablets/desktops)
   let unsubscribeFirestore: (() => void) | null = null;
   try {
@@ -161,7 +174,6 @@ export function subscribeToGlobalTemplates(
         if (docSnap.exists()) {
           const data = docSnap.data();
           if (data && (Array.isArray(data.cardTemplates) || Array.isArray(data.wheelTemplates))) {
-            firestoreHasData = true;
             processUpdate({
               cardTemplates: Array.isArray(data.cardTemplates) ? data.cardTemplates : DEFAULT_CARD_TEMPLATES,
               wheelTemplates: Array.isArray(data.wheelTemplates) ? data.wheelTemplates : DEFAULT_WHEEL_TEMPLATES,
@@ -188,7 +200,7 @@ export function subscribeToGlobalTemplates(
     console.warn("Error setting up Firestore snapshot listener:", err);
   }
 
-  // 2. Auxiliary polling fallback for /api/templates (runs every 2 seconds if Firestore is idle or disconnected)
+  // 2. Polling fallback to keep mobile/tablets synchronized even if WebSocket sleeps
   const pollInterval = setInterval(async () => {
     if (!isSubscribed) return;
     try {
@@ -197,11 +209,28 @@ export function subscribeToGlobalTemplates(
         processUpdate(data);
       }
     } catch {}
-  }, 2000);
+  }, 2500);
+
+  // 3. Tab visibility / device wake-up sync
+  const handleVisibilityOrOnline = () => {
+    if (!isSubscribed) return;
+    fetchGlobalTemplates().then(data => {
+      if (isSubscribed && data) {
+        processUpdate(data);
+      }
+    }).catch(console.warn);
+  };
+
+  window.addEventListener('visibilitychange', handleVisibilityOrOnline);
+  window.addEventListener('focus', handleVisibilityOrOnline);
+  window.addEventListener('online', handleVisibilityOrOnline);
 
   return () => {
     isSubscribed = false;
     clearInterval(pollInterval);
+    window.removeEventListener('visibilitychange', handleVisibilityOrOnline);
+    window.removeEventListener('focus', handleVisibilityOrOnline);
+    window.removeEventListener('online', handleVisibilityOrOnline);
     if (unsubscribeFirestore) {
       unsubscribeFirestore();
     }

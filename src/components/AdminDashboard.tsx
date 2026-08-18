@@ -134,18 +134,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     localStorage.setItem('custom_spellings', JSON.stringify(spells));
 
     try {
-      await saveGlobalTemplates({
+      const res = await saveGlobalTemplates({
         cardTemplates: cards,
         wheelTemplates: wheels,
         riddles: rids,
         spellings: spells
       });
-      if (successMsg) {
-        triggerNotification('success', successMsg);
+      if (res.firestore || res.api) {
+        triggerNotification('success', successMsg || 'បានរក្សាទុក និង Sync ទៅកាន់គ្រប់ឧបករណ៍ (Mobile/Tablet/PC) រួចរាល់! ☁️✨');
+      } else {
+        triggerNotification('error', 'មិនអាច Sync ទៅកាន់ Cloud បានទេ! សូមពិនិត្យមើលអ៊ីនធឺណិត។');
       }
     } catch (err: any) {
       console.warn("Firestore save warning:", err);
-      triggerNotification('success', (successMsg || 'បានរក្សាទុក!') + ' (បានរក្សាទុកក្នុងម៉ាស៊ីនរួចរាល់)');
+      triggerNotification('error', 'មានបញ្ហាក្នុងការ Sync ទៅកាន់ Cloud: ' + (err.message || 'សូមព្យាយាមម្ដងទៀត'));
     } finally {
       setIsSaving(false);
     }
