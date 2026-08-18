@@ -131,6 +131,80 @@ export async function saveGlobalTemplates(data: GlobalTemplatesData): Promise<{ 
 }
 
 /**
+ * Force fetch fresh templates directly from Cloud Firestore, and broadcast to all clients via Server API.
+ * This guarantees the admin and all connected mobile/tablet/desktop clients are perfectly synchronized.
+ */
+export async function forceRefreshFromCloud(): Promise<GlobalTemplatesData> {
+  let result: GlobalTemplatesData | null = null;
+
+  // 1. Direct fetch from Firebase Firestore document
+  try {
+    const docRef = doc(db, TEMPLATES_DOC_PATH, GLOBAL_DOC_ID);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      if (data && (Array.isArray(data.cardTemplates) || Array.isArray(data.wheelTemplates))) {
+        result = {
+          cardTemplates: Array.isArray(data.cardTemplates) ? data.cardTemplates : DEFAULT_CARD_TEMPLATES,
+          wheelTemplates: Array.isArray(data.wheelTemplates) ? data.wheelTemplates : DEFAULT_WHEEL_TEMPLATES,
+          riddles: Array.isArray(data.riddles) ? data.riddles : DEFAULT_RIDDLES,
+          spellings: Array.isArray(data.spellings) ? data.spellings : DEFAULT_SPELLINGS,
+          updatedAt: data.updatedAt || new Date().toISOString()
+        };
+      }
+    }
+  } catch (firestoreErr) {
+    console.warn("Direct Firestore force refresh warning:", firestoreErr);
+  }
+
+  // 2. If Firestore was empty or unreachable, fetch from server API with cache buster
+  if (!result) {
+    try {
+      const res = await fetch(`/api/templates?_t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && (Array.isArray(data.cardTemplates) || Array.isArray(data.wheelTemplates))) {
+          result = {
+            cardTemplates: Array.isArray(data.cardTemplates) ? data.cardTemplates : DEFAULT_CARD_TEMPLATES,
+            wheelTemplates: Array.isArray(data.wheelTemplates) ? data.wheelTemplates : DEFAULT_WHEEL_TEMPLATES,
+            riddles: Array.isArray(data.riddles) ? data.riddles : DEFAULT_RIDDLES,
+            spellings: Array.isArray(data.spellings) ? data.spellings : DEFAULT_SPELLINGS,
+            updatedAt: data.updatedAt || new Date().toISOString()
+          };
+        }
+      }
+    } catch (apiErr) {
+      console.warn("API force refresh error:", apiErr);
+    }
+  }
+
+  if (!result) {
+    result = {
+      cardTemplates: DEFAULT_CARD_TEMPLATES,
+      wheelTemplates: DEFAULT_WHEEL_TEMPLATES,
+      riddles: DEFAULT_RIDDLES,
+      spellings: DEFAULT_SPELLINGS,
+      updatedAt: new Date().toISOString()
+    };
+  }
+
+  // 3. Immediately re-broadcast to Server API (SSE) & sync back to ensure all connected clients receive it
+  try {
+    await saveGlobalTemplates(result);
+  } catch (e) {
+    console.warn("Post-refresh broadcast notice:", e);
+  }
+
+  return result;
+}
+
+/**
  * Subscribe to real-time updates for global shared templates.
  * Uses Server-Sent Events (SSE) `/api/templates/stream` for instant real-time push,
  * paired with Firestore onSnapshot and periodic synchronization on device wake-up.

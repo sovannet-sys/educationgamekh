@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Settings, Layers, Compass, BookOpen, AlertCircle, Plus, 
-  Trash2, Save, RotateCcw, Check, Sparkles, HelpCircle, FileText
+  Trash2, Save, RotateCcw, Check, Sparkles, HelpCircle, FileText,
+  RefreshCw
 } from 'lucide-react';
 import { 
   CardTemplate, WheelTemplate, RiddleTemplate, SpellingTemplate,
   DEFAULT_CARD_TEMPLATES, DEFAULT_WHEEL_TEMPLATES, DEFAULT_RIDDLES, DEFAULT_SPELLINGS
 } from '../data/initialTemplates';
-import { saveGlobalTemplates } from '../lib/dbService';
+import { saveGlobalTemplates, forceRefreshFromCloud } from '../lib/dbService';
 
 interface AdminDashboardProps {
   cardTemplates: CardTemplate[];
@@ -36,6 +37,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [activeTab, setActiveTab] = useState<'cards' | 'wheel' | 'riddles' | 'spellings'>('cards');
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isForceRefreshing, setIsForceRefreshing] = useState(false);
 
   // Draft states to keep changes local until explicit "Save" is clicked
   const [draftCards, setDraftCards] = useState<CardTemplate[]>([]);
@@ -162,6 +164,44 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       draftSpellings,
       'បានរក្សាទុក និង Sync ទៅកាន់អ្នកប្រើទាំងអស់ជាជោគជ័យ! 💾✨'
     );
+  };
+
+  // FORCE REFRESH FROM FIRESTORE / CLOUD
+  const handleForceRefresh = async () => {
+    if (hasUnsavedChanges) {
+      const confirmOverride = confirm('អ្នកមានការកែប្រែដែលមិនទាន់បានរក្សាទុក! តើអ្នកពិតជាចង់ទាញយកទិន្នន័យចុងក្រោយពី Cloud ដោយជំនួសការកែប្រែទាំងនេះមែនទេ?');
+      if (!confirmOverride) return;
+    }
+
+    setIsForceRefreshing(true);
+    try {
+      const freshData = await forceRefreshFromCloud();
+      
+      // Update actual parent states
+      setCardTemplates(freshData.cardTemplates);
+      setWheelTemplates(freshData.wheelTemplates);
+      setRiddles(freshData.riddles);
+      setSpellings(freshData.spellings);
+
+      // Update draft states
+      setDraftCards([...freshData.cardTemplates]);
+      setDraftWheels([...freshData.wheelTemplates]);
+      setDraftRiddles([...freshData.riddles]);
+      setDraftSpellings([...freshData.spellings]);
+
+      // Update local storage backup
+      localStorage.setItem('custom_card_templates', JSON.stringify(freshData.cardTemplates));
+      localStorage.setItem('custom_wheel_templates', JSON.stringify(freshData.wheelTemplates));
+      localStorage.setItem('custom_riddles', JSON.stringify(freshData.riddles));
+      localStorage.setItem('custom_spellings', JSON.stringify(freshData.spellings));
+
+      triggerNotification('success', 'បានទាញយកទិន្នន័យពី Cloud (Firestore) ឡើងវិញ និង Sync ទៅកាន់គ្រប់ Client រួចរាល់! 🔄☁️✨');
+    } catch (err: any) {
+      console.error("Force refresh error:", err);
+      triggerNotification('error', 'ការទាញយកពី Cloud បរាជ័យ៖ ' + (err.message || 'សូមព្យាយាមម្ដងទៀត'));
+    } finally {
+      setIsForceRefreshing(false);
+    }
   };
 
   // CARD TEMPLATE ACTIONS
@@ -417,6 +457,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <Save className="w-4 h-4" /> រក្សាទុកការផ្លាស់ប្ដូរទាំងអស់
               </>
             )}
+          </button>
+
+          {/* FORCE REFRESH FROM FIRESTORE / CLOUD BUTTON */}
+          <button
+            onClick={handleForceRefresh}
+            disabled={isForceRefreshing || isSaving}
+            className="px-3.5 py-2.5 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
+            title="ទាញយកទិន្នន័យឡើងវិញពី Cloud Firestore និងធ្វើសមកាលកម្មទៅកាន់គ្រប់ Client"
+            id="admin-force-refresh-btn"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isForceRefreshing ? 'animate-spin text-indigo-600' : ''}`} />
+            {isForceRefreshing ? 'កំពុងទាញយក...' : 'ទាញយកឡើងវិញ (Force Refresh)'}
           </button>
 
           <button

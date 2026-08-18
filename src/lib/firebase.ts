@@ -11,13 +11,19 @@ const firebaseConfig = {
   messagingSenderId: "1097840310635"
 };
 
+const DATABASE_ID = "ai-studio-mathpracticerand-d0a7a069-9bb2-47e7-8233-29201dc079f6";
+
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager()
-  })
-});
+export const db = initializeFirestore(
+  app,
+  {
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager()
+    })
+  },
+  DATABASE_ID
+);
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({
   prompt: 'select_account'
